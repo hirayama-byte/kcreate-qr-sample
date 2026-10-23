@@ -1,0 +1,1177 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<base target="_top">
+<meta charset="utf-8">
+<meta name="robots" content="noindex">
+<title>QRコード管理 サンプル版</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap" rel="stylesheet">
+<style>
+  :root {
+    --side: #0f172a; --side-2: #1e293b; --side-line: #273449; --side-text: #94a3b8; --side-hi: #f1f5f9;
+    --bg: #f1f5f9; --card: #fff; --line: #e2e8f0; --line-2: #f1f5f9;
+    --text: #0f172a; --muted: #64748b; --faint: #94a3b8;
+    --accent: #2563eb; --accent-2: #3b82f6; --accent-weak: #eff6ff;
+    --danger: #dc2626; --ok: #16a34a;
+    --mono: "JetBrains Mono", ui-monospace, Consolas, monospace;
+    --radius: 10px;
+  }
+  * { box-sizing: border-box; }
+  html, body { height: 100%; }
+  body { margin: 0; background: var(--bg); color: var(--text);
+         font-family: "Noto Sans JP", system-ui, -apple-system, "Hiragino Sans", "Yu Gothic UI", sans-serif; font-size: 14px;
+         -webkit-font-smoothing: antialiased; }
+  .num, .mono { font-family: var(--mono); font-variant-numeric: tabular-nums; }
+
+  /* ---- レイアウト ---- */
+  .app { display: grid; grid-template-columns: 240px 1fr; min-height: 100vh; }
+  .side { background: var(--side); color: var(--side-text); display: flex; flex-direction: column; position: sticky; top: 0; height: 100vh; }
+  .brand { display: flex; align-items: center; gap: 10px; padding: 18px 18px 16px; border-bottom: 1px solid var(--side-line); }
+  .brand .logo { width: 32px; height: 32px; border-radius: 8px; background: linear-gradient(135deg, #3b82f6, #6366f1); display: grid; place-items: center; }
+  .brand b { display: block; color: var(--side-hi); font-size: 14px; letter-spacing: .02em; }
+  .brand small { font-family: var(--mono); font-size: 10px; letter-spacing: .14em; color: var(--side-text); }
+  #tabs { padding: 12px 10px; display: flex; flex-direction: column; gap: 2px; }
+  #tabs button { display: flex; align-items: center; gap: 10px; width: 100%; border: 0; background: none; color: var(--side-text); font: inherit; font-size: 13.5px;
+                 padding: 9px 12px; border-radius: 8px; cursor: pointer; text-align: left; }
+  #tabs button svg { width: 17px; height: 17px; flex: none; opacity: .85; }
+  #tabs button:hover { background: var(--side-2); color: var(--side-hi); }
+  #tabs button.on { background: var(--side-2); color: #fff; box-shadow: inset 3px 0 0 var(--accent-2); }
+  .side-sec { padding: 14px 22px 6px; font-size: 10.5px; letter-spacing: .14em; color: #64748b; font-family: var(--mono); text-transform: uppercase; }
+  #folders { padding: 0 10px 10px; overflow: auto; flex: 1; }
+  #folders button { display: flex; width: 100%; justify-content: space-between; align-items: center; border: 0; background: none; color: var(--side-text);
+                    font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 8px; cursor: pointer; text-align: left; }
+  #folders button:hover { background: var(--side-2); color: var(--side-hi); }
+  #folders button.on { background: rgba(59,130,246,.16); color: #fff; }
+  #folders .n { font-family: var(--mono); font-size: 11px; color: #64748b; }
+  #folders button.on .n { color: #93c5fd; }
+  #folders hr { border: 0; border-top: 1px solid var(--side-line); margin: 6px 4px; }
+  .me { border-top: 1px solid var(--side-line); padding: 12px 18px; display: flex; align-items: center; gap: 10px; font-size: 12.5px; color: var(--side-hi); }
+  .avatar { width: 28px; height: 28px; border-radius: 50%; background: #334155; color: #e2e8f0; display: grid; place-items: center; font-size: 12px; font-weight: 700; flex: none; }
+  .me small { display: block; color: var(--side-text); font-size: 11px; }
+
+  .main { min-width: 0; }
+  .topbar { height: 60px; background: var(--card); border-bottom: 1px solid var(--line); display: flex; align-items: center; gap: 12px; padding: 0 28px; position: sticky; top: 0; z-index: 5; }
+  .topbar h1 { font-size: 16px; margin: 0; font-weight: 700; }
+  .topbar .crumb { color: var(--faint); font-size: 12px; font-family: var(--mono); }
+  .topbar .sp { flex: 1; }
+  main { padding: 24px 28px 40px; }
+
+  /* ---- 部品 ---- */
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius); }
+  .card-h { display: flex; align-items: center; gap: 10px; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .card-h h2 { font-size: 14px; margin: 0; }
+  .card-b { padding: 18px; }
+  input, select, button.btn { font: inherit; font-size: 13.5px; height: 36px; padding: 0 12px; border: 1px solid var(--line); border-radius: 8px; background: #fff; color: var(--text); }
+  input:focus, select:focus { outline: none; border-color: var(--accent-2); box-shadow: 0 0 0 3px rgba(59,130,246,.15); }
+  input[type=text], input[type=url] { min-width: 0; }
+  button.btn { cursor: pointer; display: inline-flex; align-items: center; gap: 6px; font-weight: 500; white-space: nowrap; }
+  button.btn:hover { background: #f8fafc; }
+  button.primary { background: var(--accent); color: #fff; border-color: var(--accent); }
+  button.primary:hover { background: #1d4ed8; }
+  button.danger { color: var(--danger); border-color: #fecaca; }
+  button.danger:hover { background: #fef2f2; }
+  button.ghost { border-color: transparent; background: none; color: var(--muted); }
+  button:disabled { opacity: .5; cursor: default; }
+  .seg { display: inline-flex; border: 1px solid var(--line); border-radius: 8px; overflow: hidden; }
+  .seg button { border: 0; border-right: 1px solid var(--line); background: #fff; font: inherit; font-size: 12.5px; padding: 0 12px; height: 34px; cursor: pointer; color: var(--muted); font-family: var(--mono); }
+  .seg button:last-child { border-right: 0; }
+  .seg button:hover { background: #f8fafc; color: var(--text); }
+
+  .kpis { display: grid; grid-template-columns: repeat(3, 1fr); gap: 14px; margin-bottom: 18px; }
+  .kpi { padding: 16px 18px; }
+  .kpi .l { font-size: 12px; color: var(--muted); display: flex; align-items: center; gap: 6px; }
+  .kpi .l i { width: 8px; height: 8px; border-radius: 2px; display: inline-block; }
+  .kpi .v { font-family: var(--mono); font-size: 26px; font-weight: 500; margin-top: 6px; letter-spacing: -.01em; }
+  .kpi .v small { font-size: 12px; color: var(--faint); margin-left: 4px; font-family: "Noto Sans JP", sans-serif; }
+
+  .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .search { position: relative; flex: 1; min-width: 180px; }
+  .search svg { position: absolute; left: 11px; top: 10px; width: 16px; height: 16px; color: var(--faint); }
+  .search input { width: 100%; padding-left: 34px; }
+  .count { font-size: 12px; color: var(--muted); font-family: var(--mono); }
+
+  .tbl { overflow-x: auto; }
+  table { width: 100%; border-collapse: collapse; }
+  th, td { padding: 11px 14px; border-bottom: 1px solid var(--line-2); text-align: left; vertical-align: middle; }
+  thead th { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: .06em; white-space: nowrap; cursor: pointer; user-select: none;
+             background: #f8fafc; border-bottom: 1px solid var(--line); position: sticky; top: 0; }
+  thead th:hover { color: var(--text); }
+  td.num, th.num { text-align: right; white-space: nowrap; }
+  tr.row { cursor: pointer; }
+  tr.row:hover td { background: #f8fafc; }
+  .code { font-family: var(--mono); font-size: 12px; color: var(--accent); background: var(--accent-weak); padding: 2px 7px; border-radius: 5px; }
+  .nm { font-weight: 500; }
+  .url { color: var(--faint); font-size: 12px; word-break: break-all; margin-top: 2px; }
+  .tag { display: inline-flex; align-items: center; gap: 6px; padding: 2px 9px; border-radius: 999px; font-size: 12px; white-space: nowrap; background: var(--tb, #f1f5f9); color: var(--tc, #334155); }
+  .tag::before { content: ""; width: 6px; height: 6px; border-radius: 50%; background: var(--tc, #64748b); }
+  .who { display: flex; align-items: center; gap: 8px; white-space: nowrap; }
+  .who .avatar { width: 22px; height: 22px; font-size: 10px; background: #e2e8f0; color: #334155; }
+  .date { color: var(--muted); font-family: var(--mono); font-size: 12px; white-space: nowrap; }
+  .meter { display: flex; align-items: center; gap: 10px; justify-content: flex-end; }
+  .meter .track { display: block; width: 70px; height: 6px; background: #eef2f7; border-radius: 3px; overflow: hidden; }
+  .meter .fill { display: block; height: 100%; background: linear-gradient(90deg, #60a5fa, #2563eb); border-radius: 3px; }
+  .muted { color: var(--muted); }
+  .err { color: var(--danger); margin: 8px 0; min-height: 1em; font-size: 13px; }
+  .loading { padding: 40px; text-align: center; color: var(--faint); }
+
+  /* 新規登録 */
+  .newgrid { display: grid; grid-template-columns: minmax(0, 1fr) 340px; gap: 18px; align-items: start; }
+  .form { display: grid; grid-template-columns: 100px 1fr; gap: 14px 14px; align-items: center; }
+  .form label { font-size: 12.5px; font-weight: 500; color: var(--muted); }
+  .form input, .form select { width: 100%; }
+  .preview { text-align: center; }
+  .preview .ph { aspect-ratio: 1; border: 1.5px dashed var(--line); border-radius: var(--radius); display: grid; place-items: center; color: var(--faint); font-size: 12.5px; margin-bottom: 12px; }
+  .qrbox { text-align: center; }
+  .qrbox canvas { width: 100%; max-width: 220px; height: auto; border-radius: 8px; border: 1px solid var(--line); }
+  .qrbox .tools { margin-top: 10px; display: flex; gap: 6px; justify-content: center; flex-wrap: wrap; }
+  .short { font-family: var(--mono); font-size: 12px; background: #f8fafc; border: 1px solid var(--line); padding: 6px 10px; border-radius: 6px; word-break: break-all; display: inline-block; }
+  .kv { display: grid; grid-template-columns: 70px 1fr; gap: 6px 10px; font-size: 13px; text-align: left; margin-top: 14px; }
+  .kv dt { color: var(--muted); font-size: 12px; }
+  .kv dd { margin: 0; word-break: break-all; }
+
+  /* モーダル */
+  .modal { position: fixed; inset: 0; background: rgba(15,23,42,.5); backdrop-filter: blur(2px); display: none; align-items: flex-start; justify-content: center; padding: 40px 16px; overflow: auto; z-index: 10; }
+  .modal.on { display: flex; }
+  .modal > .card { width: 100%; max-width: 980px; position: relative; box-shadow: 0 20px 50px rgba(15,23,42,.25); }
+  .close { position: absolute; right: 12px; top: 10px; border: 0; background: none; font-size: 22px; cursor: pointer; color: var(--faint); width: 34px; height: 34px; border-radius: 8px; }
+  .close:hover { background: var(--bg); color: var(--text); }
+  .mhead { padding: 18px 56px 16px 22px; border-bottom: 1px solid var(--line); }
+  .mhead h2 { margin: 0; font-size: 17px; }
+  .mhead .meta { display: flex; flex-wrap: wrap; gap: 8px 14px; align-items: center; margin-top: 8px; font-size: 12px; color: var(--muted); }
+  .detail { display: grid; grid-template-columns: 250px 1fr; gap: 0; }
+  .detail > div { padding: 20px 22px; min-width: 0; }
+  .detail > div:first-child { border-right: 1px solid var(--line); background: #fafbfd; }
+  .range { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; }
+  .stats { display: grid; grid-template-columns: repeat(3, 1fr); gap: 10px; margin: 14px 0; }
+  .stat { border: 1px solid var(--line); border-radius: 8px; padding: 10px 12px; }
+  .stat span { font-size: 11.5px; color: var(--muted); }
+  .stat b { display: block; font-family: var(--mono); font-weight: 500; font-size: 20px; margin-top: 2px; }
+  .chartwrap { position: relative; height: 250px; }
+  .edit { border-top: 1px solid var(--line); padding: 18px 22px 22px; }
+  .edit h3 { font-size: 13px; margin: 0 0 12px; color: var(--muted); font-weight: 500; letter-spacing: .04em; }
+  .note { font-size: 12px; color: var(--faint); margin: 10px 0 0; }
+
+  /* ランキング */
+  .rank td:first-child { width: 56px; }
+  .medal { width: 26px; height: 26px; border-radius: 7px; display: grid; place-items: center; font-family: var(--mono); font-size: 12px; background: #f1f5f9; color: var(--muted); }
+  .medal.m1 { background: #fef3c7; color: #b45309; }
+  .medal.m2 { background: #e2e8f0; color: #475569; }
+  .medal.m3 { background: #fde7d9; color: #c2410c; }
+
+  .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--side); color: #fff; padding: 10px 18px; border-radius: 8px; display: none; z-index: 20; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
+  .hide { display: none !important; }
+
+  /* スマホ・小さい画面 */
+  @media (max-width: 900px) {
+    .app { grid-template-columns: minmax(0, 1fr); }
+    .side { min-width: 0; }
+    .side { position: static; height: auto; }
+    .brand { padding: 12px 16px; }
+    #tabs { flex-direction: row; overflow-x: auto; padding: 8px; }
+    #tabs button { width: auto; white-space: nowrap; padding: 8px 12px; }
+    #tabs button.on { box-shadow: inset 0 -2px 0 var(--accent-2); }
+    .side-sec, .me { display: none; }
+    #folders { display: flex; gap: 4px; overflow-x: auto; padding: 0 8px 10px; flex: none; }
+    #folders button { width: auto; white-space: nowrap; gap: 8px; }
+    #folders hr { display: none; }
+    .topbar { padding: 0 16px; position: static; }
+    main { padding: 16px; }
+    .kpis { grid-template-columns: 1fr 1fr 1fr; gap: 8px; }
+    .kpi { padding: 12px; }
+    .kpi .v { font-size: 18px; }
+    .newgrid, .detail { grid-template-columns: 1fr; }
+    .detail > div:first-child { border-right: 0; border-bottom: 1px solid var(--line); }
+    .form { grid-template-columns: 1fr; gap: 6px; }
+    .hide-sm { display: none; }
+    .meter .track { display: none; }
+    td .nm, td .url { min-width: 150px; }
+    th, td { padding: 10px; }
+    .kpi .l { font-size: 11px; }
+  }
+</style>
+</head>
+<body>
+<div class="app">
+  <aside class="side">
+    <div class="brand">
+      <div class="logo"><svg width="18" height="18" viewBox="0 0 24 24" fill="#fff"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm8-2h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-6 2h2v2h-2v-2zm4 0h2v2h-2v-2zm-2 2h2v2h-2v-2zm4 0h2v2h-2v-2z"/></svg></div>
+      <div><b>QRコード管理</b><small>K-CREATE</small></div>
+    </div>
+    <nav id="tabs">
+      <button data-tab="list" class="on"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M8 6h13M8 12h13M8 18h13M3 6h.01M3 12h.01M3 18h.01"/></svg>QR一覧</button>
+      <button data-tab="new"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新規登録</button>
+      <button data-tab="rank"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 20V10M10 20V4M16 20v-7M22 20H2"/></svg>ランキング</button>
+      <button data-tab="trash" class="hide" id="tabTrash"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg>ゴミ箱</button>
+    </nav>
+    <div class="side-sec">Folders</div>
+    <div id="folders"></div>
+    <div class="me"><span class="avatar" id="meAv">?</span><div><span id="me"></span><small id="meRole"></small></div></div>
+  </aside>
+
+  <div class="main">
+    <header class="topbar">
+      <h1 id="pageTitle">QR一覧</h1>
+      <span class="crumb" id="crumb"></span>
+      <span class="sp"></span>
+      <button class="btn primary" id="goNew"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round"><path d="M12 5v14M5 12h14"/></svg>新規QR</button>
+    </header>
+
+    <main>
+      <div id="boot" class="loading">読み込み中…</div>
+
+      <!-- 一覧 -->
+      <section id="list" class="hide">
+        <div class="kpis">
+          <div class="card kpi"><div class="l"><i style="background:#6366f1"></i>登録QR</div><div class="v" id="kN">-</div></div>
+          <div class="card kpi"><div class="l"><i style="background:#3b82f6"></i>直近30日の読み取り</div><div class="v" id="k30">-</div></div>
+          <div class="card kpi"><div class="l"><i style="background:#06b6d4"></i>累計の読み取り</div><div class="v" id="kAll">-</div></div>
+        </div>
+        <div class="card">
+          <div class="bar">
+            <select id="qField">
+              <option value="all">すべて</option>
+              <option value="name">名称</option>
+              <option value="url">URL</option>
+            </select>
+            <div class="search">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+              <input type="text" id="q" placeholder="名称・URL・ジャンル・作成者で検索">
+            </div>
+            <select id="qGenre"><option value="">ジャンル：すべて</option></select>
+            <span class="count" id="count"></span>
+          </div>
+          <div class="tbl">
+            <table>
+              <thead><tr>
+                <th data-sort="code" class="hide-sm">CODE</th>
+                <th data-sort="name">名称</th>
+                <th data-sort="genre">ジャンル</th>
+                <th data-sort="ownerName" class="hide-sm">作成者</th>
+                <th data-sort="created" class="hide-sm">作成日</th>
+                <th data-sort="last30" class="num">30日</th>
+                <th data-sort="total" class="num">累計</th>
+              </tr></thead>
+              <tbody id="rows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- 新規登録 -->
+      <section id="new" class="hide">
+        <div class="newgrid">
+          <div class="card">
+            <div class="card-h"><h2>QRコードを発行</h2></div>
+            <div class="card-b">
+              <div class="form">
+                <label for="nName">名称</label><input type="text" id="nName" placeholder="例：2612一宮版_○○様_求人">
+                <label for="nGenre">ジャンル</label><select id="nGenre"><option value="">選んでください</option></select>
+                <label for="nUrl">飛び先URL</label><input type="url" id="nUrl" placeholder="https://">
+                <span></span><div><button class="btn primary" id="nSave">QRを発行する</button></div>
+              </div>
+              <div class="err" id="nErr"></div>
+              <p class="note">発行後も、飛び先URLは一覧の詳細からいつでも変更できます（印刷したQRはそのまま使えます）。</p>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card-h"><h2>発行したQR</h2></div>
+            <div class="card-b preview" id="made"><div class="ph">ここに表示されます</div></div>
+          </div>
+        </div>
+      </section>
+
+      <!-- ランキング -->
+      <section id="rank" class="hide">
+        <div class="card">
+          <div class="bar">
+            <select id="rPeriod"></select>
+            <select id="rGenre"><option value="">ジャンル：すべて</option></select>
+          </div>
+          <div class="tbl">
+            <table class="rank">
+              <thead><tr><th>順位</th><th>名称</th><th>ジャンル</th><th class="hide-sm">作成者</th><th class="num">読み取り</th></tr></thead>
+              <tbody id="rRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+
+      <!-- ゴミ箱 -->
+      <section id="trash" class="hide">
+        <div class="card">
+          <div class="bar"><span class="muted" style="font-size:13px">削除したQRが読み取られると、ケイクリエイトのサイトへ移動します。「元に戻す」で再び使えるようになります。</span></div>
+          <div class="tbl">
+            <table>
+              <thead><tr><th>名称</th><th>ジャンル</th><th class="hide-sm">作成者</th><th>削除日</th><th></th></tr></thead>
+              <tbody id="tRows"></tbody>
+            </table>
+          </div>
+        </div>
+      </section>
+    </main>
+  </div>
+</div>
+
+<!-- 詳細 -->
+<div class="modal" id="modal">
+  <div class="card">
+    <button class="close" id="mClose" aria-label="閉じる">×</button>
+    <div id="mBody"></div>
+  </div>
+</div>
+
+<!-- 初回の名前登録 -->
+<div class="modal" id="nameModal">
+  <div class="card" style="max-width:420px">
+    <div class="card-b">
+      <h2 style="margin:0 0 6px;font-size:16px">はじめに名前を登録してください</h2>
+      <p class="muted" style="margin:0 0 14px;font-size:13px">左のフォルダ名になります（例：平山）。</p>
+      <input type="text" id="myName" style="width:100%">
+      <div class="err" id="myNameErr"></div>
+      <button class="btn primary" id="myNameSave">登録</button>
+    </div>
+  </div>
+</div>
+
+<div class="toast" id="toast"></div>
+
+<script>// Apps Script の最小限のモック（テスト用）。Node でもブラウザでも動く
+(function (root) {
+  function colNum(s) { var n = 0; for (var i = 0; i < s.length; i++) n = n * 26 + s.charCodeAt(i) - 64; return n; }
+
+  function Sheet(name) { this.name = name; this.data = []; this.textCols = {}; }
+  Sheet.prototype.getName = function () { return this.name; };
+  Sheet.prototype.getLastRow = function () { return this.data.length; };
+  Sheet.prototype.getLastColumn = function () { return this.data.reduce(function (m, r) { return Math.max(m, r.length); }, 0); };
+  Sheet.prototype.appendRow = function (r) { this.data.push(this._conv(r.slice(), 1)); return this; };
+  // 書式が文字列でない列に yyyy-MM-dd を入れると Date になる（実物と同じ落とし穴を再現）
+  Sheet.prototype._conv = function (row, c0) {
+    var self = this;
+    return row.map(function (v, i) {
+      if (typeof v === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(v) && !self.textCols[c0 + i]) return new Date(v + 'T00:00:00+09:00');
+      return v;
+    });
+  };
+  Sheet.prototype.getRange = function (a, c, nr, nc) {
+    if (typeof a === 'string') {
+      var m = /^([A-Z]+):([A-Z]+)$/.exec(a);
+      if (m) { var c1 = colNum(m[1]), c2 = colNum(m[2]); return new Range(this, 1, c1, Math.max(this.data.length, 1), c2 - c1 + 1, true); }
+      var m2 = /^([A-Z]+)(\d+)$/.exec(a);
+      return new Range(this, +m2[2], colNum(m2[1]), 1, 1);
+    }
+    return new Range(this, a, c, nr || 1, nc || 1);
+  };
+
+  function Range(sh, r, c, nr, nc, whole) { this.sh = sh; this.r = r; this.c = c; this.nr = nr; this.nc = nc; this.whole = whole; }
+  Range.prototype.getRow = function () { return this.r; };
+  Range.prototype.getValues = function () {
+    var out = [];
+    for (var i = 0; i < this.nr; i++) {
+      var row = this.sh.data[this.r - 1 + i] || [];
+      var o = [];
+      for (var j = 0; j < this.nc; j++) { var v = row[this.c - 1 + j]; o.push(v === undefined ? '' : v); }
+      out.push(o);
+    }
+    return out;
+  };
+  Range.prototype.setValues = function (vals) {
+    for (var i = 0; i < vals.length; i++) {
+      var row = this.sh.data[this.r - 1 + i] || (this.sh.data[this.r - 1 + i] = []);
+      var cv = this.sh._conv(vals[i], this.c);
+      for (var j = 0; j < cv.length; j++) row[this.c - 1 + j] = cv[j];
+    }
+    return this;
+  };
+  Range.prototype.setValue = function (v) { return this.setValues([[v]]); };
+  Range.prototype.getValue = function () { return this.getValues()[0][0]; };
+  Range.prototype.setNumberFormat = function (f) { if (f === '@') for (var j = 0; j < this.nc; j++) this.sh.textCols[this.c + j] = true; return this; };
+  Range.prototype.createTextFinder = function (text) {
+    var self = this, entire = false;
+    var tf = {
+      matchEntireCell: function (b) { entire = b; return tf; },
+      findNext: function () {
+        for (var i = 0; i < self.sh.data.length; i++) for (var j = 0; j < self.nc; j++) {
+          var v = String((self.sh.data[i] || [])[self.c - 1 + j]);
+          if (entire ? v === text : v.indexOf(text) >= 0) return new Range(self.sh, i + 1, self.c + j, 1, 1);
+        }
+        return null;
+      }
+    };
+    return tf;
+  };
+
+  function Spreadsheet(id, name) { this.id = id; this.name = name; this.sheets = [new Sheet('シート1')]; }
+  Spreadsheet.prototype.getId = function () { return this.id; };
+  Spreadsheet.prototype.getUrl = function () { return 'https://docs.google.com/spreadsheets/d/' + this.id; };
+  Spreadsheet.prototype.getSheetByName = function (n) { return this.sheets.filter(function (s) { return s.name === n; })[0] || null; };
+  Spreadsheet.prototype.insertSheet = function (n) { var s = new Sheet(n); this.sheets.push(s); return s; };
+  Spreadsheet.prototype.deleteSheet = function (s) { this.sheets.splice(this.sheets.indexOf(s), 1); };
+  Spreadsheet.prototype.getSheets = function () { return this.sheets.slice(); };
+
+  function pad(n) { return ('0' + n).slice(-2); }
+
+  // store: 複数プロジェクトで共有するスプレッドシート置き場
+  function makeEnv(store, opts) {
+    opts = opts || {};
+    var props = {};
+    var env = {
+      user: opts.user || 'owner@k-create.co.jp',
+      now: null, // テストで日時を固定するとき Date を入れる
+      SpreadsheetApp: {
+        create: function (n) { var id = 'sheet' + (Object.keys(store).length + 1); store[id] = new Spreadsheet(id, n); return store[id]; },
+        openById: function (id) { if (!store[id]) throw new Error('no sheet ' + id); return store[id]; }
+      },
+      PropertiesService: { getScriptProperties: function () { return {
+        getProperty: function (k) { return props.hasOwnProperty(k) ? props[k] : null; },
+        setProperty: function (k, v) { props[k] = String(v); }
+      }; } },
+      Session: {
+        getActiveUser: function () { return { getEmail: function () { return env.user; } }; },
+        getEffectiveUser: function () { return { getEmail: function () { return opts.owner || 'owner@k-create.co.jp'; } }; }
+      },
+      Utilities: { formatDate: function (d, tz, f) {
+        var t = new Date(d.getTime() + 9 * 3600000);
+        return f.replace('yyyy', t.getUTCFullYear()).replace('MM', pad(t.getUTCMonth() + 1)).replace('dd', pad(t.getUTCDate()))
+          .replace('HH', pad(t.getUTCHours())).replace('mm', pad(t.getUTCMinutes()));
+      } },
+      LockService: { getScriptLock: function () { return { waitLock: function () {}, tryLock: function () { return true; }, releaseLock: function () {} }; } },
+      ContentService: {
+        MimeType: { JSON: 'json', JAVASCRIPT: 'js' },
+        createTextOutput: function (s) { return { body: s, setMimeType: function (m) { this.mime = m; return this; } }; }
+      },
+      Logger: { log: function () {} },
+      props: props
+    };
+    env.worker = fakeWorker();
+    env.UrlFetchApp = { fetch: function (url, opt) { return env.worker.fetch(url, opt || {}); } };
+    return env;
+  }
+
+  // Cloudflare Worker（worker/src/index.js）と同じ受け答えをするメモリ上の偽物
+  function fakeWorker() {
+    var w = { links: {}, daily: {}, token: 'test-token', down: false };
+    function res(code, body) { return { getResponseCode: function () { return code; }, getContentText: function () { return JSON.stringify(body); } }; }
+    function ymdJst(t) { return new Date(t + 9 * 3600000).toISOString().slice(0, 10); }
+    w.scan = function (code, date) {
+      code = String(code).toLowerCase();
+      var l = w.links[code];
+      if (!l || l.deleted) return 'https://www.k-create.co.jp/';
+      var d = date || ymdJst(Date.now());
+      var k = d + '|' + code;
+      w.daily[k] = (w.daily[k] || 0) + 1;
+      return l.url;
+    };
+    w.add = function (date, code, n) { var k = date + '|' + code; w.daily[k] = (w.daily[k] || 0) + n; };
+    w.fetch = function (url, opt) {
+      if (w.down) return res(503, { error: 'down' });
+      if ((opt.headers || {}).Authorization !== 'Bearer ' + w.token) return res(401, { error: 'unauthorized' });
+      var u = new URL(url), p = u.pathname, q = u.searchParams, m = (opt.method || 'get').toLowerCase();
+      var mm = /^\/api\/links\/([a-z0-9]{4,12})$/.exec(p);
+      if (mm && m === 'put') { var b = JSON.parse(opt.payload); w.links[mm[1]] = { url: b.url, deleted: !!b.deleted }; return res(200, { ok: true }); }
+      if (p === '/api/links' && m === 'post') { JSON.parse(opt.payload).forEach(function (x) { w.links[x.code] = { url: x.url, deleted: !!x.deleted }; }); return res(200, { ok: true }); }
+      var from = q.get('from') || '0000-00-00', to = q.get('to') || '9999-99-99', out = {};
+      if (p === '/api/totals') {
+        Object.keys(w.daily).forEach(function (k) { var s = k.split('|'); if (s[0] >= from && s[0] <= to) out[s[1]] = (out[s[1]] || 0) + w.daily[k]; });
+        return res(200, out);
+      }
+      if (p === '/api/daily') {
+        Object.keys(w.daily).forEach(function (k) { var s = k.split('|'); if (s[1] === q.get('code') && s[0] >= from && s[0] <= to) out[s[0]] = w.daily[k]; });
+        return res(200, out);
+      }
+      return res(404, { error: 'not found' });
+    };
+    return w;
+  }
+
+  root.GasMock = { makeEnv: makeEnv, Spreadsheet: Spreadsheet };
+  if (typeof module !== 'undefined') module.exports = root.GasMock;
+})(typeof window !== 'undefined' ? window : globalThis);
+</script>
+<script>
+var __u = new URLSearchParams(location.search).get("user") || "hirayama@k-create.co.jp";
+var __env = GasMock.makeEnv({}, { user: __u, owner: "hirayama@k-create.co.jp" });
+["SpreadsheetApp","PropertiesService","Session","Utilities","LockService","ContentService","Logger","UrlFetchApp"].forEach(function (k) { window[k] = __env[k]; });
+window.HtmlService = {};
+</script>
+<script>// QRコード管理 — 管理画面（社内のみ公開）
+// デプロイ: ウェブアプリ / 実行ユーザー=自分 / アクセス=ドメイン内のユーザー
+
+var TZ = 'Asia/Tokyo';
+var SHEET_ID = ''; // QRコード管理データ（このスクリプトの親）
+// 読み取りの転送・記録は Cloudflare Worker（worker/）。WORKER_TOKEN は Secret.gs（エディタ以外に出さない）
+var WORKER_URL = 'https://kcreate-qr.k-create.workers.dev';
+var BASE_URL = WORKER_URL + '/'; // QRに入れるURLの頭（独自ドメインにしたら settings シートの base_url で上書き）
+var DEFAULT_GENRES = ['グルメ', 'スクール', 'ショップ', '暮らし', 'トータルケア', 'クリニック', '介護・福祉', '終活・士業', '企業', 'その他'];
+var QR_HEAD = ['code', 'name', 'genre', 'url', 'owner_email', 'owner_name', 'created', 'updated', 'deleted', 'deleted_by'];
+var CODE_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789'; // 見間違えやすい i l o 0 1 を除く
+
+function doGet() {
+  return HtmlService.createTemplateFromFile('index').evaluate()
+    .setTitle('QRコード管理')
+    .addMetaTag('viewport', 'width=device-width, initial-scale=1');
+}
+
+// ---------- 初期設定（エディタから1回だけ実行） ----------
+function setup() {
+  var props = PropertiesService.getScriptProperties();
+  var id = props.getProperty('SHEET_ID') || SHEET_ID;
+  var ss = id ? SpreadsheetApp.openById(id) : SpreadsheetApp.create('QRコード管理データ');
+  ensureSheet_(ss, 'qr', QR_HEAD);
+  ss.getSheetByName('qr').getRange('A:A').setNumberFormat('@');
+  var genres = ensureSheet_(ss, 'genres', ['genre']);
+  if (genres.getLastRow() < 2) genres.getRange(2, 1, DEFAULT_GENRES.length, 1).setValues(DEFAULT_GENRES.map(function (g) { return [g]; }));
+  var admins = ensureSheet_(ss, 'admins', ['email']);
+  if (admins.getLastRow() < 2) admins.appendRow([Session.getEffectiveUser().getEmail()]);
+  ensureSheet_(ss, 'members', ['email', 'name']);
+  ensureSheet_(ss, 'settings', ['key', 'value']);
+  var def = ss.getSheetByName('Sheet1') || ss.getSheetByName('シート1');
+  if (def && ss.getSheets().length > 1) ss.deleteSheet(def);
+  props.setProperty('SHEET_ID', ss.getId());
+  Logger.log('SHEET_ID = ' + ss.getId());
+  Logger.log(ss.getUrl());
+}
+
+function ensureSheet_(ss, name, head) {
+  var sh = ss.getSheetByName(name);
+  if (!sh) sh = ss.insertSheet(name);
+  if (sh.getLastRow() === 0) sh.appendRow(head);
+  return sh;
+}
+
+// ---------- 共通 ----------
+function ss_() { return SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID') || SHEET_ID); }
+function sheet_(name) { return ss_().getSheetByName(name); }
+function myEmail_() { return String(Session.getActiveUser().getEmail() || '').toLowerCase(); }
+function now_() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm'); }
+function ymd_(d) { return Utilities.formatDate(d, TZ, 'yyyy-MM-dd'); }
+function str_(v) { return v instanceof Date ? ymd_(v) : String(v); }
+
+function rows_(name) {
+  var sh = sheet_(name);
+  var n = sh.getLastRow();
+  if (n < 2) return [];
+  return sh.getRange(2, 1, n - 1, sh.getLastColumn()).getValues();
+}
+
+function setting_(key) {
+  var r = rows_('settings').filter(function (x) { return x[0] === key; })[0];
+  return r ? String(r[1]) : '';
+}
+
+function isAdmin_(email) {
+  return rows_('admins').some(function (r) { return String(r[0]).toLowerCase() === email; });
+}
+
+function memberMap_() {
+  var m = {};
+  rows_('members').forEach(function (r) { m[String(r[0]).toLowerCase()] = String(r[1]); });
+  return m;
+}
+
+function genres_() { return rows_('genres').map(function (r) { return String(r[0]); }).filter(String); }
+
+function qrObj_(r) {
+  return {
+    code: String(r[0]), name: String(r[1]), genre: String(r[2]), url: String(r[3]),
+    ownerEmail: String(r[4]).toLowerCase(), ownerName: String(r[5]),
+    created: str_(r[6]), updated: str_(r[7]), deleted: r[8] ? str_(r[8]) : '', deletedBy: String(r[9] || '')
+  };
+}
+
+function findQrRow_(code) {
+  var sh = sheet_('qr');
+  var hit = sh.getRange('A:A').createTextFinder(code).matchEntireCell(true).findNext();
+  if (!hit || hit.getRow() < 2) throw new Error('QRが見つかりません: ' + code);
+  return hit.getRow();
+}
+
+function checkUrl_(url) {
+  url = String(url || '').trim();
+  if (!/^https?:\/\/[^\s]+\.[^\s]+$/i.test(url)) throw new Error('URLは http:// か https:// から入力してください');
+  return url;
+}
+
+function checkFields_(f) {
+  var name = String(f.name || '').trim();
+  if (!name) throw new Error('名称を入力してください');
+  if (genres_().indexOf(f.genre) < 0) throw new Error('ジャンルを選んでください');
+  return { name: name, genre: f.genre, url: checkUrl_(f.url) };
+}
+
+function canEdit_(q, email) { return q.ownerEmail === email || isAdmin_(email); }
+
+// ---------- Cloudflare Worker ----------
+function worker_(method, path, body) {
+  var opt = { method: method, muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + WORKER_TOKEN } };
+  if (body !== undefined) { opt.contentType = 'application/json'; opt.payload = JSON.stringify(body); }
+  var res = UrlFetchApp.fetch(WORKER_URL + path, opt);
+  if (res.getResponseCode() !== 200) throw new Error('読み取り記録サーバーとの通信に失敗しました（' + res.getResponseCode() + '）。少し待ってもう一度お試しください');
+  return JSON.parse(res.getContentText());
+}
+function putLink_(code, url, deleted) { worker_('put', '/api/links/' + code, { url: url, deleted: !!deleted }); }
+// 期間の回数 { code: n }
+function totals_(from, to) { return worker_('get', '/api/totals?from=' + from + '&to=' + to); }
+
+// 全QRの飛び先を Worker に送り直す（エディタから実行・障害時の復旧用）
+function syncAll() {
+  var list = rows_('qr').map(qrObj_).map(function (q) { return { code: q.code, url: q.url, deleted: !!q.deleted }; });
+  for (var i = 0; i < list.length; i += 200) worker_('post', '/api/links', list.slice(i, i + 200));
+  Logger.log(list.length + ' 件を送りました');
+}
+
+function sum_(o) { var s = 0; for (var k in o) s += o[k]; return s; }
+
+function last30_() {
+  var to = new Date();
+  var from = new Date(to.getTime() - 29 * 86400000);
+  return { from: ymd_(from), to: ymd_(to) };
+}
+
+// ---------- 画面から呼ぶ関数 ----------
+function init() {
+  var email = myEmail_();
+  if (!email) throw new Error('ログイン情報が取得できません。会社のGoogleアカウントで開いてください');
+  if (!ss_().getSheetByName('qr')) setup();
+  return {
+    me: { email: email, name: memberMap_()[email] || '', isAdmin: isAdmin_(email) },
+    genres: genres_(),
+    baseUrl: setting_('base_url') || BASE_URL,
+    fallbackUrl: setting_('fallback_url') || 'https://www.k-create.co.jp/'
+  };
+}
+
+function setMyName(name) {
+  name = String(name || '').trim();
+  if (!name) throw new Error('名前を入力してください');
+  var email = myEmail_();
+  var sh = sheet_('members');
+  var rows = rows_('members');
+  for (var i = 0; i < rows.length; i++) {
+    if (String(rows[i][0]).toLowerCase() === email) { sh.getRange(i + 2, 2).setValue(name); return name; }
+  }
+  sh.appendRow([email, name]);
+  return name;
+}
+
+// 一覧（ゴミ箱を除く）＋直近30日・累計の回数
+function listQr() {
+  var p = last30_();
+  var month = totals_(p.from, p.to);
+  var all = totals_('0000-00-00', '9999-99-99');
+  var members = memberMap_();
+  return rows_('qr').map(qrObj_).filter(function (q) { return !q.deleted; }).map(function (q) {
+    q.ownerName = members[q.ownerEmail] || q.ownerName || q.ownerEmail;
+    q.last30 = month[q.code] || 0;
+    q.total = all[q.code] || 0;
+    return q;
+  });
+}
+
+function listTrash() {
+  if (!isAdmin_(myEmail_())) throw new Error('ゴミ箱は管理者のみ見られます');
+  return rows_('qr').map(qrObj_).filter(function (q) { return q.deleted; });
+}
+
+function newCode_(used) {
+  for (var t = 0; t < 100; t++) {
+    var s = '';
+    for (var i = 0; i < 6; i++) s += CODE_CHARS.charAt(Math.floor(Math.random() * CODE_CHARS.length));
+    if (!used[s]) return s;
+  }
+  throw new Error('コードを作れませんでした。もう一度お試しください');
+}
+
+function createQr(f) {
+  var v = checkFields_(f);
+  var email = myEmail_();
+  var name = memberMap_()[email] || email;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(10000);
+  try {
+    var used = {};
+    rows_('qr').forEach(function (r) { used[String(r[0])] = true; });
+    var code = newCode_(used);
+    var t = now_();
+    putLink_(code, v.url, false);
+    sheet_('qr').appendRow([code, v.name, v.genre, v.url, email, name, t, t, '', '']);
+    return qrObj_([code, v.name, v.genre, v.url, email, name, t, t, '', '']);
+  } finally { lock.releaseLock(); }
+}
+
+function updateQr(code, f) {
+  var v = checkFields_(f);
+  var sh = sheet_('qr');
+  var row = findQrRow_(code);
+  var q = qrObj_(sh.getRange(row, 1, 1, QR_HEAD.length).getValues()[0]);
+  if (!canEdit_(q, myEmail_())) throw new Error('このQRを変更できるのは作成者（' + q.ownerName + '）と管理者だけです');
+  if (v.url !== q.url) putLink_(code, v.url, !!q.deleted);
+  sh.getRange(row, 2, 1, 3).setValues([[v.name, v.genre, v.url]]);
+  sh.getRange(row, 8).setValue(now_());
+  return true;
+}
+
+function deleteQr(code) {
+  var email = myEmail_();
+  var sh = sheet_('qr');
+  var row = findQrRow_(code);
+  var q = qrObj_(sh.getRange(row, 1, 1, QR_HEAD.length).getValues()[0]);
+  if (!canEdit_(q, email)) throw new Error('このQRを削除できるのは作成者（' + q.ownerName + '）と管理者だけです');
+  putLink_(code, q.url, true);
+  sh.getRange(row, 9, 1, 2).setValues([[now_(), email]]);
+  return true;
+}
+
+function restoreQr(code) {
+  if (!isAdmin_(myEmail_())) throw new Error('元に戻せるのは管理者だけです');
+  var sh = sheet_('qr');
+  var row = findQrRow_(code);
+  putLink_(code, String(sh.getRange(row, 4).getValue()), false);
+  sh.getRange(row, 9, 1, 2).setValues([['', '']]);
+  return true;
+}
+
+// 期間の日別グラフ用（0の日も埋める）
+function getStats(code, from, to) {
+  if (!from || !to || from > to) throw new Error('期間を正しく選んでください');
+  var days = [], d = new Date(from + 'T00:00:00+09:00'), end = new Date(to + 'T00:00:00+09:00');
+  if ((end - d) / 86400000 > 731) throw new Error('期間は2年以内で選んでください');
+  var c = worker_('get', '/api/daily?code=' + code + '&from=' + from + '&to=' + to);
+  for (; d <= end; d = new Date(d.getTime() + 86400000)) {
+    var k = ymd_(d);
+    days.push({ date: k, count: c[k] || 0 });
+  }
+  return { days: days, total: sum_(c) };
+}
+
+// ランキング（期間内の回数順・ゴミ箱を除く）
+function getRanking(from, to, limit) {
+  var counts = totals_(from, to);
+  var members = memberMap_();
+  return rows_('qr').map(qrObj_).filter(function (q) { return !q.deleted; }).map(function (q) {
+    q.count = counts[q.code] || 0;
+    q.ownerName = members[q.ownerEmail] || q.ownerName || q.ownerEmail;
+    return q;
+  }).filter(function (q) { return q.count > 0; })
+    .sort(function (a, b) { return b.count - a.count; })
+    .slice(0, limit || 30);
+}
+
+// Worker の管理用トークン（worker 側の API_TOKEN と同じ値）。このファイルは共有しない
+var WORKER_TOKEN = 'test-token';
+</script>
+<script>// サンプルデータ（架空・40件・8人）と google.script.run のモック
+(function () {
+  var me = __env.user;
+  __env.user = 'hirayama@k-create.co.jp';
+  setup();
+  var ss = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID'));
+  var members = [['hirayama@k-create.co.jp', '平山'], ['sato@k-create.co.jp', '佐藤'], ['suzuki@k-create.co.jp', '鈴木'], ['tanaka@k-create.co.jp', '田中'],
+                 ['ito@k-create.co.jp', '伊藤'], ['kato@k-create.co.jp', '加藤'], ['yamada@k-create.co.jp', '山田'], ['ogawa@k-create.co.jp', '小川']];
+  // [名称, ジャンル, 人気度(1日あたりの目安)]
+  var items = [
+    ['くれよん12月号_表紙裏_求人特集', '企業', 14], ['ラーメン一番_クーポン', 'グルメ', 9], ['英会話スクールABC_体験レッスン', 'スクール', 6], ['ヘアサロンmoon_予約', 'トータルケア', 11],
+    ['整体院かなで_初回割', 'トータルケア', 7], ['こどもクリニック_web予約', 'クリニック', 10], ['デイサービスさくら_見学会', '介護・福祉', 3], ['行政書士なかむら事務所', '終活・士業', 2],
+    ['一宮建設_会社案内', '企業', 4], ['パン工房むぎ_新作', 'グルメ', 8], ['学習塾ステップ_冬期講習', 'スクール', 9], ['リフォームの匠_無料見積', '暮らし', 5],
+    ['眼科ひかり_診療案内', 'クリニック', 4], ['相続相談センター_無料相談会', '終活・士業', 3], ['焼肉ぎゅう_宴会コース', 'グルメ', 12], ['ピアノ教室ドレミ', 'スクール', 2],
+    ['雑貨店ことり_オンラインショップ', 'ショップ', 6], ['歯科さくらぎ_web予約', 'クリニック', 7], ['住まいの窓口_土地情報', '暮らし', 5], ['家族葬ホールやすらぎ_事前相談', '終活・士業', 2],
+    ['カフェ木もれび_モーニング', 'グルメ', 10], ['スポーツクラブFIT_入会キャンペーン', 'スクール', 8], ['ネイルサロンlily', 'トータルケア', 6], ['ドラッグ大和_チラシ連動', 'ショップ', 13],
+    ['グループホームひだまり_求人', '介護・福祉', 4], ['訪問看護ステーションあおば', '介護・福祉', 3], ['司法書士みどり事務所', '終活・士業', 1], ['お花屋さんフローラ_母の日', 'ショップ', 5],
+    ['ハウスクリーニング清流', '暮らし', 4], ['皮ふ科なごみクリニック', 'クリニック', 6], ['寿司処まつ_出前', 'グルメ', 7], ['プログラミング教室コードキッズ', 'スクール', 3],
+    ['車検のコバヤシ_早割', '暮らし', 6], ['くれよん12月号_プレゼント応募', 'その他', 15], ['一宮七夕まつり_協賛', 'その他', 2], ['工務店ナカムラ_完成見学会', '暮らし', 3],
+    ['居酒屋とりや_忘年会', 'グルメ', 11], ['メンズ脱毛サロンKAI', 'トータルケア', 5], ['介護タクシーいろどり', '介護・福祉', 1], ['きもの館はなや_成人式', 'ショップ', 4]
+  ];
+  var rand = (function () { var s = 11; return function () { s = (s * 16807) % 2147483647; return s / 2147483647; }; })();
+  var dayMs = 86400000, now = Date.now();
+  members.forEach(function (m) { __env.user = m[0]; setMyName(m[1]); });
+  var sh = ss.getSheetByName('qr');
+  items.forEach(function (it, i) {
+    var m = members[i % members.length];
+    __env.user = m[0];
+    var q = createQr({ name: it[0], genre: it[1], url: 'https://example.jp/sample/' + (i + 1) });
+    var age = 10 + Math.floor(rand() * 170); // 作成から何日たったか
+    var created = new Date(now - age * dayMs);
+    var stamp = Utilities.formatDate(created, TZ, 'yyyy-MM-dd') + ' ' + ('0' + (9 + Math.floor(rand() * 9))).slice(-2) + ':' + ('0' + Math.floor(rand() * 60)).slice(-2);
+    sh.getRange(i + 2, 7, 1, 2).setValues([[stamp, stamp]]);
+    // 配布直後に多く、だんだん減る。週末は少し多め
+    for (var d = age; d >= 0; d--) {
+      var since = age - d, day = new Date(now - d * dayMs).getDay();
+      var base = it[2] * (since < 14 ? 2.2 : since < 45 ? 1.2 : 0.5) * (day === 0 || day === 6 ? 1.3 : 1);
+      var c = Math.floor(rand() * base * 1.4);
+      if (c > 0) __env.worker.add(Utilities.formatDate(new Date(now - d * dayMs), TZ, 'yyyy-MM-dd'), q.code, c);
+    }
+  });
+  __env.user = me;
+
+  // google.script.run の代わり（少し待ってから返す）
+  function runner(ok, ng) {
+    return new Proxy({}, { get: function (_, k) {
+      if (k === 'withSuccessHandler') return function (f) { return runner(f, ng); };
+      if (k === 'withFailureHandler') return function (f) { return runner(ok, f); };
+      return function () {
+        var a = arguments;
+        setTimeout(function () {
+          try { var r = JSON.parse(JSON.stringify(window[k].apply(null, a))); ok && ok(r); }
+          catch (e) { ng && ng(e); }
+        }, 150);
+      };
+    } });
+  }
+  window.google = { script: { run: runner() } };
+})();
+</script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script>
+var S = { me: null, genres: [], baseUrl: '', list: [], folder: 'all', sort: 'created', desc: true, chart: null };
+var $ = function (id) { return document.getElementById(id); };
+var TITLES = { list: 'QR一覧', 'new': '新規登録', rank: 'ランキング', trash: 'ゴミ箱' };
+// ジャンルの色（背景, 文字）
+var GENRE_COLORS = [['#fff7ed', '#c2410c'], ['#eef2ff', '#4338ca'], ['#fdf2f8', '#be185d'], ['#ecfdf5', '#047857'], ['#f5f3ff', '#6d28d9'],
+                    ['#eff6ff', '#1d4ed8'], ['#fefce8', '#a16207'], ['#f0fdfa', '#0f766e'], ['#f1f5f9', '#334155'], ['#f8fafc', '#64748b']];
+
+function call(fn) {
+  var args = Array.prototype.slice.call(arguments, 1);
+  return new Promise(function (ok, ng) {
+    google.script.run.withSuccessHandler(ok).withFailureHandler(function (e) { ng(e && e.message ? e : new Error(String(e))); })[fn].apply(null, args);
+  });
+}
+function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
+function toast(msg) { var t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._t); t._t = setTimeout(function () { t.style.display = 'none'; }, 2500); }
+function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
+function shortUrl(code) { return (S.baseUrl || 'https://qr.k-create.co.jp/').replace(/\/?$/, '/') + code; }
+function canEdit(q) { return S.me.isAdmin || q.ownerEmail === S.me.email; }
+function fmt(n) { return Number(n || 0).toLocaleString(); }
+function initial(s) { return esc(String(s || '?').trim().charAt(0).toUpperCase()); }
+function tag(g) {
+  var c = GENRE_COLORS[Math.max(0, S.genres.indexOf(g)) % GENRE_COLORS.length];
+  return '<span class="tag" style="--tb:' + c[0] + ';--tc:' + c[1] + '">' + esc(g) + '</span>';
+}
+function who(name) { return '<span class="who"><span class="avatar">' + initial(name) + '</span>' + esc(name) + '</span>'; }
+function meter(n, max) {
+  return '<div class="meter"><span class="num">' + fmt(n) + '</span><span class="track"><span class="fill" style="width:' + (max ? Math.round(n / max * 100) : 0) + '%"></span></span></div>';
+}
+
+// ---------- QR画像 ----------
+function drawQr(text, px) {
+  var qr = qrcode(0, 'M');
+  qr.addData(text);
+  qr.make();
+  var n = qr.getModuleCount(), quiet = 4, cell = Math.max(1, Math.floor(px / (n + quiet * 2)));
+  var size = cell * (n + quiet * 2);
+  var cv = document.createElement('canvas');
+  cv.width = cv.height = size;
+  var g = cv.getContext('2d');
+  g.fillStyle = '#fff'; g.fillRect(0, 0, size, size);
+  g.fillStyle = '#000';
+  for (var r = 0; r < n; r++) for (var c = 0; c < n; c++) if (qr.isDark(r, c)) g.fillRect((c + quiet) * cell, (r + quiet) * cell, cell, cell);
+  return cv;
+}
+function safeName(s) { return String(s).replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 60); }
+function downloadJpeg(q, px) {
+  var cv = drawQr(shortUrl(q.code), px);
+  var a = document.createElement('a');
+  a.href = cv.toDataURL('image/jpeg', 0.95);
+  a.download = safeName(q.name) + '_' + q.code + '.jpg';
+  document.body.appendChild(a); a.click(); a.remove();
+}
+function qrPanel(q) {
+  var w = document.createElement('div');
+  w.className = 'qrbox';
+  w.appendChild(drawQr(shortUrl(q.code), 440));
+  var tools = document.createElement('div');
+  tools.className = 'tools';
+  tools.innerHTML = '<select class="dlsize"><option value="600">600px</option><option value="1200" selected>1200px</option><option value="2400">2400px</option></select>' +
+    '<button class="btn primary dl"><svg width="15" height="15" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 4v11M7 10l5 5 5-5M5 20h14"/></svg>JPEG</button>';
+  tools.querySelector('.dl').onclick = function () { downloadJpeg(q, Number(tools.querySelector('.dlsize').value)); };
+  w.appendChild(tools);
+  return w;
+}
+
+// ---------- 起動 ----------
+function showMe() {
+  var n = S.me.name || S.me.email;
+  $('me').textContent = n;
+  $('meAv').textContent = String(n).charAt(0).toUpperCase();
+  $('meRole').textContent = S.me.isAdmin ? '管理者' : 'メンバー';
+}
+call('init').then(function (r) {
+  S.me = r.me; S.genres = r.genres; S.baseUrl = r.baseUrl;
+  showMe();
+  if (r.me.isAdmin) $('tabTrash').classList.remove('hide');
+  ['qGenre', 'nGenre', 'rGenre'].forEach(function (id) {
+    S.genres.forEach(function (g) { var o = document.createElement('option'); o.value = o.textContent = g; $(id).appendChild(o); });
+  });
+  buildPeriods();
+  $('boot').classList.add('hide');
+  if (!r.me.name) $('nameModal').classList.add('on');
+  showTab('list');
+}).catch(function (e) { $('boot').textContent = 'エラー：' + e.message; });
+
+$('myNameSave').onclick = function () {
+  var b = this; b.disabled = true;
+  call('setMyName', $('myName').value).then(function (n) {
+    S.me.name = n; showMe();
+    $('nameModal').classList.remove('on'); loadList();
+  }).catch(function (e) { $('myNameErr').textContent = e.message; }).then(function () { b.disabled = false; });
+};
+
+// ---------- タブ ----------
+$('tabs').onclick = function (e) { var t = e.target.closest('button'); if (t) showTab(t.dataset.tab); };
+$('goNew').onclick = function () { showTab('new'); };
+function showTab(tab) {
+  document.querySelectorAll('#tabs button').forEach(function (b) { b.classList.toggle('on', b.dataset.tab === tab); });
+  ['list', 'new', 'rank', 'trash'].forEach(function (id) { $(id).classList.toggle('hide', id !== tab); });
+  $('pageTitle').textContent = TITLES[tab];
+  $('goNew').classList.toggle('hide', tab === 'new');
+  if (tab !== 'list') $('crumb').textContent = '';
+  if (tab === 'list') loadList();
+  if (tab === 'rank') loadRank();
+  if (tab === 'trash') loadTrash();
+  if (tab === 'new') { $('nErr').textContent = ''; }
+}
+
+// ---------- 一覧 ----------
+function loadList() {
+  $('rows').innerHTML = '<tr><td colspan="7" class="loading">読み込み中…</td></tr>';
+  return call('listQr').then(function (list) { S.list = list; renderFolders(); renderList(); })
+    .catch(function (e) { $('rows').innerHTML = '<tr><td colspan="7" class="err">' + esc(e.message) + '</td></tr>'; });
+}
+function renderFolders() {
+  var by = {};
+  S.list.forEach(function (q) { (by[q.ownerEmail] = by[q.ownerEmail] || { name: q.ownerName, n: 0 }).n++; });
+  var mine = by[S.me.email] ? by[S.me.email].n : 0;
+  var html = btnF('all', '全体', S.list.length) + btnF(S.me.email, '自分のQR', mine) + '<hr>';
+  Object.keys(by).sort(function (a, b) { return by[a].name.localeCompare(by[b].name, 'ja'); })
+    .forEach(function (k) { html += btnF(k, by[k].name, by[k].n); });
+  $('folders').innerHTML = html;
+}
+function btnF(key, label, n) { return '<button data-f="' + esc(key) + '" class="' + (S.folder === key ? 'on' : '') + '"><span>' + esc(label) + '</span><span class="n">' + n + '</span></button>'; }
+$('folders').onclick = function (e) {
+  var b = e.target.closest('button'); if (!b) return;
+  S.folder = b.dataset.f;
+  if ($('list').classList.contains('hide')) { showTab('list'); return; }
+  renderFolders(); renderList();
+};
+['q', 'qField', 'qGenre'].forEach(function (id) { $(id).addEventListener('input', renderList); });
+document.querySelector('#list thead').onclick = function (e) {
+  var th = e.target.closest('th'); if (!th) return;
+  var k = th.dataset.sort;
+  if (S.sort === k) S.desc = !S.desc; else { S.sort = k; S.desc = (k === 'last30' || k === 'total' || k === 'created'); }
+  renderList();
+};
+function inFolder() { return S.list.filter(function (q) { return S.folder === 'all' || q.ownerEmail === S.folder; }); }
+function filtered() {
+  var kw = $('q').value.trim().toLowerCase(), f = $('qField').value, g = $('qGenre').value;
+  return inFolder().filter(function (q) {
+    if (g && q.genre !== g) return false;
+    if (!kw) return true;
+    var hay = f === 'name' ? q.name : f === 'url' ? q.url : [q.name, q.url, q.genre, q.ownerName, q.code].join(' ');
+    return hay.toLowerCase().indexOf(kw) >= 0;
+  }).sort(function (a, b) {
+    var x = a[S.sort], y = b[S.sort];
+    var c = typeof x === 'number' ? x - y : String(x).localeCompare(String(y), 'ja');
+    return S.desc ? -c : c;
+  });
+}
+function renderList() {
+  var base = inFolder(), list = filtered();
+  var fname = S.folder === 'all' ? '全体' : S.folder === S.me.email ? '自分のQR' : ((base[0] || {}).ownerName || '');
+  $('crumb').textContent = '/ ' + fname;
+  $('kN').innerHTML = fmt(base.length) + '<small>件</small>';
+  $('k30').innerHTML = fmt(base.reduce(function (s, q) { return s + q.last30; }, 0)) + '<small>回</small>';
+  $('kAll').innerHTML = fmt(base.reduce(function (s, q) { return s + q.total; }, 0)) + '<small>回</small>';
+  $('count').textContent = list.length + ' / ' + base.length;
+  document.querySelectorAll('#list th').forEach(function (th) {
+    th.textContent = th.textContent.replace(/[ ▲▼]+$/, '') + (th.dataset.sort === S.sort ? (S.desc ? ' ▼' : ' ▲') : '');
+  });
+  var max = list.reduce(function (m, q) { return Math.max(m, q.last30); }, 0);
+  $('rows').innerHTML = list.length ? list.map(function (q) {
+    return '<tr class="row" data-c="' + esc(q.code) + '"><td class="hide-sm"><span class="code">' + esc(q.code) + '</span></td>' +
+      '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
+      '<td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
+      '<td class="num">' + meter(q.last30, max) + '</td><td class="num">' + fmt(q.total) + '</td></tr>';
+  }).join('') : '<tr><td colspan="7" class="loading">該当するQRはありません</td></tr>';
+}
+$('rows').onclick = function (e) {
+  var tr = e.target.closest('tr.row'); if (!tr) return;
+  openDetail(S.list.filter(function (q) { return q.code === tr.dataset.c; })[0]);
+};
+
+// ---------- 詳細（グラフ・編集） ----------
+function genreOptions(sel) { return S.genres.map(function (g) { return '<option' + (g === sel ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join(''); }
+function openDetail(q) {
+  if (!q) return;
+  var edit = canEdit(q);
+  var today = new Date(), from = new Date(today.getTime() - 29 * 86400000);
+  $('mBody').innerHTML =
+    '<div class="mhead"><h2>' + esc(q.name) + '</h2>' +
+      '<div class="meta"><span class="code">' + esc(q.code) + '</span>' + tag(q.genre) + who(q.ownerName) +
+      '<span class="mono">作成 ' + esc(q.created) + '</span><span class="mono">更新 ' + esc(q.updated) + '</span></div></div>' +
+    '<div class="detail"><div><div id="dQr"></div>' +
+      '<dl class="kv"><dt>QRの中身</dt><dd class="mono" style="font-size:12px">' + esc(shortUrl(q.code)) + '</dd>' +
+      '<dt>飛び先</dt><dd><a href="' + esc(q.url) + '" target="_blank" rel="noopener" style="color:var(--accent);font-size:12.5px">' + esc(q.url) + '</a></dd></dl>' +
+    '</div><div>' +
+      '<div class="range">' +
+        '<input type="date" id="dFrom" value="' + ymd(from) + '"><span class="muted">〜</span><input type="date" id="dTo" value="' + ymd(today) + '">' +
+        '<div class="seg"><button data-p="7">7D</button><button data-p="30">30D</button><button data-p="90">90D</button><button data-p="365">1Y</button></div>' +
+      '</div>' +
+      '<div class="stats"><div class="stat"><span>期間の合計</span><b id="dSum">-</b></div><div class="stat"><span>1日平均</span><b id="dAvg">-</b></div><div class="stat"><span>累計</span><b>' + fmt(q.total) + '</b></div></div>' +
+      '<div class="chartwrap"><canvas id="dChart"></canvas></div>' +
+    '</div></div>' +
+    (edit ?
+      '<div class="edit"><h3>設定を変更</h3>' +
+      '<div class="form">' +
+        '<label>名称</label><input type="text" id="eName" value="' + esc(q.name) + '">' +
+        '<label>ジャンル</label><select id="eGenre">' + genreOptions(q.genre) + '</select>' +
+        '<label>飛び先URL</label><input type="url" id="eUrl" value="' + esc(q.url) + '">' +
+        '<span></span><div style="display:flex;gap:8px"><button class="btn primary" id="eSave">保存</button><span style="flex:1"></span><button class="btn danger" id="eDel">削除</button></div>' +
+      '</div><div class="err" id="eErr"></div>' +
+      '<p class="note">飛び先を変えても、印刷済みのQRはそのまま使えます。</p></div>'
+      : '<div class="edit"><p class="note" style="margin:0">このQRを変更・削除できるのは作成者（' + esc(q.ownerName) + '）と管理者です。</p></div>');
+  $('dQr').appendChild(qrPanel(q));
+  $('modal').classList.add('on');
+  var reload = function () { loadStats(q.code); };
+  $('dFrom').onchange = reload; $('dTo').onchange = reload;
+  $('mBody').querySelectorAll('[data-p]').forEach(function (b) {
+    b.onclick = function () {
+      var t = new Date(); $('dTo').value = ymd(t);
+      $('dFrom').value = ymd(new Date(t.getTime() - (Number(b.dataset.p) - 1) * 86400000)); reload();
+    };
+  });
+  reload();
+  if (edit) {
+    $('eSave').onclick = function () {
+      var b = this; b.disabled = true; $('eErr').textContent = '';
+      var url = $('eUrl').value.trim();
+      if (url !== q.url && !confirm('飛び先URLを変更します。印刷済みのQRも新しい飛び先に移動します。よろしいですか？')) { b.disabled = false; return; }
+      call('updateQr', q.code, { name: $('eName').value, genre: $('eGenre').value, url: url })
+        .then(function () { toast('保存しました'); closeModal(); loadList(); })
+        .catch(function (e) { $('eErr').textContent = e.message; b.disabled = false; });
+    };
+    $('eDel').onclick = function () {
+      if (!confirm('「' + q.name + '」を削除しますか？\n削除後に読み取られると、ケイクリエイトのサイトへ移動します。（管理者はゴミ箱から元に戻せます）')) return;
+      var b = this; b.disabled = true;
+      call('deleteQr', q.code).then(function () { toast('削除しました'); closeModal(); loadList(); })
+        .catch(function (e) { $('eErr').textContent = e.message; b.disabled = false; });
+    };
+  }
+}
+function loadStats(code) {
+  var from = $('dFrom').value, to = $('dTo').value;
+  $('dSum').textContent = '…'; $('dAvg').textContent = '…';
+  call('getStats', code, from, to).then(function (r) {
+    var sum = r.days.reduce(function (s, d) { return s + d.count; }, 0);
+    $('dSum').textContent = fmt(sum);
+    $('dAvg').textContent = r.days.length ? (sum / r.days.length).toFixed(1) : '0';
+    if (S.chart) S.chart.destroy();
+    var ctx = $('dChart').getContext('2d');
+    var grad = ctx.createLinearGradient(0, 0, 0, 250);
+    grad.addColorStop(0, '#3b82f6'); grad.addColorStop(1, '#93c5fd');
+    S.chart = new Chart($('dChart'), {
+      type: 'bar',
+      data: { labels: r.days.map(function (d) { return d.date.slice(5).replace('-', '/'); }),
+              datasets: [{ label: '読み取り回数', data: r.days.map(function (d) { return d.count; }), backgroundColor: grad, hoverBackgroundColor: '#1d4ed8', borderRadius: 3, maxBarThickness: 26 }] },
+      options: { maintainAspectRatio: false, animation: false,
+                 plugins: { legend: { display: false },
+                   tooltip: { backgroundColor: '#0f172a', padding: 10, displayColors: false,
+                     callbacks: { title: function (it) { return r.days[it[0].dataIndex].date; }, label: function (it) { return it.parsed.y + ' 回'; } } } },
+                 scales: { y: { beginAtZero: true, border: { display: false }, grid: { color: '#eef2f7' }, ticks: { precision: 0, color: '#94a3b8', font: { family: 'JetBrains Mono', size: 11 } } },
+                           x: { grid: { display: false }, border: { color: '#e2e8f0' }, ticks: { autoSkip: true, maxRotation: 0, color: '#94a3b8', font: { family: 'JetBrains Mono', size: 11 } } } } }
+    });
+  }).catch(function (e) { $('dSum').textContent = '-'; toast(e.message); });
+}
+function closeModal() { $('modal').classList.remove('on'); if (S.chart) { S.chart.destroy(); S.chart = null; } }
+$('mClose').onclick = closeModal;
+$('modal').onclick = function (e) { if (e.target === this) closeModal(); };
+document.addEventListener('keydown', function (e) { if (e.key === 'Escape') closeModal(); });
+
+// ---------- 新規登録 ----------
+$('nSave').onclick = function () {
+  var b = this; b.disabled = true; $('nErr').textContent = '';
+  call('createQr', { name: $('nName').value, genre: $('nGenre').value, url: $('nUrl').value })
+    .then(function (q) {
+      q.ownerName = S.me.name; q.last30 = 0; q.total = 0;
+      $('made').innerHTML = '<div id="madeQr"></div>' +
+        '<dl class="kv"><dt>名称</dt><dd><b>' + esc(q.name) + '</b></dd><dt>コード</dt><dd><span class="code">' + esc(q.code) + '</span></dd>' +
+        '<dt>QRの中身</dt><dd class="mono" style="font-size:12px">' + esc(shortUrl(q.code)) + '</dd><dt>飛び先</dt><dd style="font-size:12.5px">' + esc(q.url) + '</dd></dl>';
+      $('madeQr').appendChild(qrPanel(q));
+      $('nName').value = ''; $('nUrl').value = ''; $('nGenre').value = '';
+      toast('QRを発行しました');
+    }).catch(function (e) { $('nErr').textContent = e.message; })
+    .then(function () { b.disabled = false; });
+};
+
+// ---------- ランキング ----------
+function buildPeriods() {
+  var t = new Date(), o = [['last30', '直近30日']];
+  for (var i = 0; i < 12; i++) {
+    var d = new Date(t.getFullYear(), t.getMonth() - i, 1);
+    o.push([d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2), d.getFullYear() + '年' + (d.getMonth() + 1) + '月']);
+  }
+  $('rPeriod').innerHTML = o.map(function (x) { return '<option value="' + x[0] + '">' + x[1] + '</option>'; }).join('');
+}
+$('rPeriod').onchange = loadRank; $('rGenre').onchange = function () { renderRank(); };
+function loadRank() {
+  var v = $('rPeriod').value, from, to, t = new Date();
+  if (v === 'last30') { to = ymd(t); from = ymd(new Date(t.getTime() - 29 * 86400000)); }
+  else { var y = +v.slice(0, 4), m = +v.slice(5); from = v + '-01'; to = ymd(new Date(y, m, 0)); }
+  $('crumb').textContent = '/ ' + $('rPeriod').selectedOptions[0].textContent;
+  $('rRows').innerHTML = '<tr><td colspan="5" class="loading">集計中…</td></tr>';
+  call('getRanking', from, to, 200).then(function (r) { S.rank = r; renderRank(); })
+    .catch(function (e) { $('rRows').innerHTML = '<tr><td colspan="5" class="err">' + esc(e.message) + '</td></tr>'; });
+}
+function renderRank() {
+  var g = $('rGenre').value;
+  var r = (S.rank || []).filter(function (q) { return !g || q.genre === g; }).slice(0, 30);
+  var max = r.length ? r[0].count : 0;
+  $('rRows').innerHTML = r.length ? r.map(function (q, i) {
+    return '<tr class="row" data-c="' + esc(q.code) + '"><td><span class="medal' + (i < 3 ? ' m' + (i + 1) : '') + '">' + (i + 1) + '</span></td>' +
+      '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
+      '<td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="num">' + meter(q.count, max) + '</td></tr>';
+  }).join('') : '<tr><td colspan="5" class="loading">この期間の読み取りはまだありません</td></tr>';
+}
+$('rRows').onclick = function (e) {
+  var tr = e.target.closest('tr.row'); if (!tr) return;
+  var hit = S.list.filter(function (q) { return q.code === tr.dataset.c; })[0];
+  if (hit) openDetail(hit); else loadList().then(function () { openDetail(S.list.filter(function (q) { return q.code === tr.dataset.c; })[0]); });
+};
+
+// ---------- ゴミ箱 ----------
+function loadTrash() {
+  $('tRows').innerHTML = '<tr><td colspan="5" class="loading">読み込み中…</td></tr>';
+  call('listTrash').then(function (r) {
+    $('tRows').innerHTML = r.length ? r.map(function (q) {
+      return '<tr><td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td><td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) +
+        '</td><td class="date">' + esc(q.deleted) + '</td><td class="num"><button class="btn" data-c="' + esc(q.code) + '">元に戻す</button></td></tr>';
+    }).join('') : '<tr><td colspan="5" class="loading">ゴミ箱は空です</td></tr>';
+  }).catch(function (e) { $('tRows').innerHTML = '<tr><td colspan="5" class="err">' + esc(e.message) + '</td></tr>'; });
+}
+$('tRows').onclick = function (e) {
+  var b = e.target.closest('button[data-c]'); if (!b) return;
+  b.disabled = true;
+  call('restoreQr', b.dataset.c).then(function () { toast('元に戻しました'); loadTrash(); }).catch(function (e) { toast(e.message); b.disabled = false; });
+};
+</script>
+<!-- サンプル版だけに付ける帯（人の切り替え） -->
+<div id="demoBar" style="position:fixed;right:16px;bottom:16px;z-index:30;background:#0f172a;color:#e2e8f0;border-radius:10px;padding:10px 12px;font-size:12px;box-shadow:0 8px 24px rgba(0,0,0,.25);display:flex;gap:8px;align-items:center;flex-wrap:wrap;max-width:calc(100vw - 32px)">
+  <b style="background:#f59e0b;color:#111;border-radius:4px;padding:1px 6px">サンプル版</b>
+  <span>データは架空・保存されません</span>
+  <label>表示する人
+    <select id="demoUser" style="height:28px;font-size:12px;margin-left:4px">
+      <option value="hirayama@k-create.co.jp">平山（管理者）</option>
+      <option value="sato@k-create.co.jp">佐藤（メンバー）</option>
+      <option value="ogawa@k-create.co.jp">小川（メンバー）</option>
+      <option value="new@k-create.co.jp">新しく入った人</option>
+    </select>
+  </label>
+</div>
+<script>
+(function () {
+  var sel = document.getElementById('demoUser');
+  sel.value = __u;
+  sel.onchange = function () { location.search = '?user=' + encodeURIComponent(sel.value); };
+})();
+</script>
+</body>
+</html>
