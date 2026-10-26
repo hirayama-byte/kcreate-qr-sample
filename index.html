@@ -1326,6 +1326,13 @@ function battleSuggest(name) {
   var key = m[1] + m[2], hit = (BATTLE_SCHEDULE[ed] || {})[key];
   return { edition: ed, issue: key, date: hit || battleRule(ed, 2000 + (+m[1]), +m[2]), estimated: !hit, label: '20' + m[1] + '年' + (+m[2]) + '月号 ' + ed + '版' };
 }
+// 名称からクライアント名を拾う。「2612一宮版_●●●_メモ」の ●●● の部分（_ か ＿ で区切る）。号＋版の頭が無ければ最初の部分
+function clientOf(name) {
+  var parts = String(name || '').split(/[_＿]/).map(function (x) { return x.trim(); }).filter(String);
+  if (!parts.length) return '';
+  var head = /^d{4}.*版$/.test(parts[0]) || !!battleSuggest(parts[0]);
+  return head ? (parts[1] || '') : parts[0];
+}
 // BATTLE-LIB-END
 var BATTLE_HINT = '任意。名称に「2612一宮版」のように号と版が入っていると、予定表の配布開始日を自動で入れます。ランキング「QRバトル」はこの日から1か月ずつ数えます。';
 function fmtYmd(s) { return s ? s.slice(0, 4) + '/' + (+s.slice(5, 7)) + '/' + (+s.slice(8, 10)) : ''; }
@@ -1447,7 +1454,7 @@ function renderRank() {
         : '<td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="num">' + meter(q.count, max) + '</td>') + '</tr>';
   }).join('') : '<tr><td colspan="9" class="loading">' + (battle ? '集計最終日がこの月に入るQRはありません（集計開始日が入っているQRが対象です）' : 'この期間の読み取りはまだありません') + '</td></tr>';
 }
-// エントリーシート（提出用）の形で Excel に書き出す。列は提出シートの表示部分（NO.〜終了日）だけ。原稿ID・クライアント名は空欄（あとで記入）
+// エントリーシート（提出用）の形で Excel に書き出す。列は提出シートの表示部分（NO.〜終了日）だけ。原稿IDは空欄（あとで記入）。クライアント名は名称の「版_」の次の部分
 function slashDate(s) { return s ? s.slice(0, 4) + '/' + (+s.slice(5, 7)) + '/' + (+s.slice(8, 10)) : ''; }
 // 版ごとの部数（エントリーシートの「部数・個数」。オーナー指定 2026-10-26）
 var CIRCULATION = { '一宮': 208900, '江南': 60600, '岩倉': 58250, '清須': 66400, '津島': 59900, '西北': 67200 };
@@ -1457,7 +1464,7 @@ function exportBattleXlsx() {
   if (!meta || !rows.length) { toast('書き出すQRがありません'); return; }
   var head = ['NO.', '原稿ID', 'QRコードID', 'エントリー部門', 'クライアント名', '媒体種', '部数・個数', 'QR計測期間(31日間以内) 開始日', '終了日'];
   var aoa = [['【全員対象】QR部門　エントリーシート'], head].concat(rows.map(function (q, i) {
-    return [i + 1, '', q.qid || '', q.division || '', '', '自社紙媒体', circulationOf(q.name), slashDate(q.from), slashDate(q.to)];
+    return [i + 1, '', q.qid || '', q.division || '', clientOf(q.name), '自社紙媒体', circulationOf(q.name), slashDate(q.from), slashDate(q.to)];
   }));
   var ws = XLSX.utils.aoa_to_sheet(aoa);
   ws['!cols'] = [5, 10, 12, 16, 22, 12, 12, 26, 12].map(function (w) { return { wch: w }; });
