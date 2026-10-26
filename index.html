@@ -887,32 +887,35 @@ function addMonths_(s, n) {
 function addDays_(s, n) { var t = new Date(s + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
 function daysBetween_(a, b) { return Math.round((new Date(b + 'T00:00:00Z') - new Date(a + 'T00:00:00Z')) / 86400000); }
 
-// QRバトルのランキング。cycle=1 は各QRの計測開始日から1か月、2 はその次の1か月…
-// 計測開始日の無いQR・まだ開始日が来ていないQRは対象外。期間が終わっていないものは「集計中」（done=false）
+// QRバトルのランキング。各QRの集計期間は「集計開始日から1か月」（終了日＝開始日＋1か月−1日）。
+// ym（yyyy-MM）で「集計最終日がその月に入るQR」を出す。例: 2026-12 → 最終日が 12/1〜12/31 のQR
+// 計測開始日の無いQRは対象外。開始前（from が今日より後）は 0回・notStarted、期間が終わっていないものは「集計中」（done=false）
 // 0回のQRも出す（エントリーシートに全件載せるため）。累計 total も付ける
-function getBattleRanking(cycle, limit) {
-  cycle = Math.max(1, Math.min(12, parseInt(cycle, 10) || 1));
+function getBattleRanking(ym, limit) {
   var today = ymd_(new Date());
+  if (!/^\d{4}-\d{2}$/.test(String(ym || ''))) ym = today.slice(0, 7);
   var members = memberMap_();
   var all = rows_('qr').map(qrObj_).filter(function (q) { return !q.deleted; });
   var withDate = all.filter(function (q) { return /^\d{4}-\d{2}-\d{2}$/.test(q.battleStart); });
   var items = withDate.map(function (q) {
-    q.from = addMonths_(q.battleStart, cycle - 1);
-    q.to = addDays_(addMonths_(q.battleStart, cycle), -1);
+    q.from = q.battleStart;
+    q.to = addDays_(addMonths_(q.battleStart, 1), -1);
     q.ownerName = members[q.ownerEmail] || q.ownerName || q.ownerEmail;
     return q;
-  }).filter(function (q) { return q.from <= today; });
-  var counts = items.length ? counts_(items.map(function (q) { return { code: q.code, from: q.from, to: q.to }; })) : {};
-  var all_ = items.length ? totals_('0000-00-00', '9999-99-99') : {};
+  }).filter(function (q) { return q.to.slice(0, 7) === ym; });
+  var started = items.filter(function (q) { return q.from <= today; });
+  var counts = started.length ? counts_(started.map(function (q) { return { code: q.code, from: q.from, to: q.to }; })) : {};
+  var all_ = started.length ? totals_('0000-00-00', '9999-99-99') : {};
   var list = items.map(function (q) {
-    q.count = counts[q.code] || 0;
+    q.notStarted = q.from > today;
+    q.count = q.notStarted ? 0 : counts[q.code] || 0;
     q.total = all_[q.code] || 0;
     q.done = q.to < today;
-    q.day = Math.min(daysBetween_(q.from, today), daysBetween_(q.from, q.to)) + 1;
+    q.day = q.notStarted ? 0 : Math.min(daysBetween_(q.from, today), daysBetween_(q.from, q.to)) + 1;
     return q;
   }).sort(function (a, b) { return b.count - a.count || b.total - a.total || String(a.qid).localeCompare(String(b.qid)); })
     .slice(0, limit || 30);
-  return { cycle: cycle, list: list, entrants: items.length, notStarted: withDate.length - items.length, noDate: all.length - withDate.length };
+  return { ym: ym, list: list, entrants: items.length, notStarted: items.length - started.length, noDate: all.length - withDate.length };
 }
 
 // Worker の管理用トークン（worker 側の API_TOKEN と同じ値）。このファイルは共有しない
@@ -1379,8 +1382,13 @@ $('nSave').onclick = function () {
 // ---------- ランキング ----------
 function buildPeriods() {
   var t = new Date();
-  var o = '<optgroup label="QRバトル（各QRの集計開始日から1か月ずつ）">' +
-    [1, 2, 3].map(function (c) { return '<option value="battle' + c + '">QRバトル ' + c + 'か月目</option>'; }).join('') + '</optgroup>';
+  // QRバトルは「集計最終日（開始日から1か月の最終日）がどの月か」で選ぶ。今月を先頭に、前11か月〜先3か月
+  var bo = [];
+  for (var k = 3; k >= -11; k--) {
+    var bd = new Date(t.getFullYear(), t.getMonth() + k, 1), last = new Date(bd.getFullYear(), bd.getMonth() + 1, 0).getDate();
+    bo.push(['battle:' + bd.getFullYear() + '-' + ('0' + (bd.getMonth() + 1)).slice(-2), 'QRバトル ' + bd.getFullYear() + '年' + (bd.getMonth() + 1) + '月（集計最終日 ' + (bd.getMonth() + 1) + '/1〜' + (bd.getMonth() + 1) + '/' + last + '）']);
+  }
+  var o = '<optgroup label="QRバトル（集計最終日の月で選ぶ）">' + bo.map(function (x) { return '<option value="' + x[0] + '">' + x[1] + '</option>'; }).join('') + '</optgroup>';
   var m = [['last30', '直近30日']];
   for (var i = 0; i < 12; i++) {
     var d = new Date(t.getFullYear(), t.getMonth() - i, 1);
@@ -1388,6 +1396,7 @@ function buildPeriods() {
   }
   o += '<optgroup label="期間で見る">' + m.map(function (x) { return '<option value="' + x[0] + '">' + x[1] + '</option>'; }).join('') + '</optgroup>';
   $('rPeriod').innerHTML = o;
+  $('rPeriod').value = 'battle:' + t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2);
 }
 $('rPeriod').onchange = loadRank; $('rGenre').onchange = function () { renderRank(); }; $('rDiv').onchange = function () { renderRank(); };
 function loadRank() {
@@ -1395,11 +1404,11 @@ function loadRank() {
   $('crumb').textContent = '/ ' + $('rPeriod').selectedOptions[0].textContent;
   $('rRows').innerHTML = '<tr><td colspan="9" class="loading">集計中…</td></tr>';
   $('rInfo').textContent = '';
-  var battle = /^battle(\d+)$/.exec(v);
+  var battle = /^battle:(\d{4}-\d{2})$/.exec(v);
   S.rankMode = battle ? 'battle' : 'period';
   $('rXlsx').classList.toggle('hide', !battle);
   var p;
-  if (battle) p = call('getBattleRanking', +battle[1], 1000).then(function (r) { S.rank = r.list; S.rankMeta = r; });
+  if (battle) p = call('getBattleRanking', battle[1], 1000).then(function (r) { S.rank = r.list; S.rankMeta = r; });
   else {
     var from, to;
     if (v === 'last30') { to = ymd(t); from = ymd(new Date(t.getTime() - 29 * 86400000)); }
@@ -1409,6 +1418,7 @@ function loadRank() {
   p.then(renderRank).catch(function (e) { $('rRows').innerHTML = '<tr><td colspan="9" class="err">' + esc(e.message) + '</td></tr>'; });
 }
 function mdLabel(s) { return s ? (+s.slice(5, 7)) + '/' + (+s.slice(8, 10)) : ''; }
+function ymLabel(ym) { return ym ? ym.slice(0, 4) + '年' + (+ym.slice(5, 7)) + '月' : ''; }
 function rankFiltered() {
   var g = $('rGenre').value, d = $('rDiv').value;
   return (S.rank || []).filter(function (q) { return (!g || q.genre === g) && (!d || q.division === d); });
@@ -1421,9 +1431,9 @@ function renderRank() {
   var all = rankFiltered(), r = all.slice(0, battle ? 100 : 30);
   var max = r.length ? r[0].count : 0;
   if (battle && meta) {
-    $('rInfo').textContent = '各QRの集計開始日から' + meta.cycle + 'か月目の読み取り回数で並べています。対象 ' + all.length + '件' +
+    $('rInfo').textContent = '集計最終日が ' + ymLabel(meta.ym) + ' のQRを、集計開始日から1か月間の読み取り回数で並べています。対象 ' + all.length + '件' +
       (all.length !== meta.entrants ? '（絞り込み前 ' + meta.entrants + '件）' : '') +
-      (meta.notStarted ? '／開始日がまだ来ていないQR ' + meta.notStarted + '件は含みません' : '') +
+      (meta.notStarted ? '／うち開始前 ' + meta.notStarted + '件' : '') +
       (meta.noDate ? '／集計開始日が未設定のQR ' + meta.noDate + '件は対象外' : '');
   }
   $('rRows').innerHTML = r.length ? r.map(function (q, i) {
@@ -1432,14 +1442,16 @@ function renderRank() {
       '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
       (battle
         ? '<td>' + (q.division ? '<span class="div">' + esc(q.division) + '</span>' : '<span class="muted">−</span>') + '</td><td class="hide-sm">' + who(q.ownerName) + '</td>' +
-          '<td class="date hide-sm">' + esc(mdLabel(q.from)) + '〜' + esc(mdLabel(q.to)) + (q.done ? '' : ' <span class="live">集計中 ' + q.day + '日目</span>') + '</td>' +
+          '<td class="date hide-sm">' + esc(mdLabel(q.from)) + '〜' + esc(mdLabel(q.to)) + (q.notStarted ? ' <span class="live">開始前</span>' : q.done ? '' : ' <span class="live">集計中 ' + q.day + '日目</span>') + '</td>' +
           '<td class="num">' + meter(q.count, max) + '</td><td class="num hide-sm">' + fmt(q.total) + '</td>'
         : '<td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="num">' + meter(q.count, max) + '</td>') + '</tr>';
-  }).join('') : '<tr><td colspan="9" class="loading">' + (battle ? 'QRバトル集計開始日が入っていて、この期間に入っているQRはまだありません' : 'この期間の読み取りはまだありません') + '</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="loading">' + (battle ? '集計最終日がこの月に入るQRはありません（集計開始日が入っているQRが対象です）' : 'この期間の読み取りはまだありません') + '</td></tr>';
 }
 // エントリーシート（提出用）の形で Excel に書き出す。列は提出シートの表示部分（NO.〜終了日）だけ。原稿ID・クライアント名は空欄（あとで記入）
 function slashDate(s) { return s ? s.slice(0, 4) + '/' + (+s.slice(5, 7)) + '/' + (+s.slice(8, 10)) : ''; }
-function circulationOf(name) { var ed = battleSuggest(name); return ed ? (ed.edition === '一宮' ? 200000 : 60000) : ''; }
+// 版ごとの部数（エントリーシートの「部数・個数」。オーナー指定 2026-10-26）
+var CIRCULATION = { '一宮': 208900, '江南': 60600, '岩倉': 58250, '清須': 66400, '津島': 59900, '西北': 67200 };
+function circulationOf(name) { var ed = battleSuggest(name); return ed ? CIRCULATION[ed.edition] || '' : ''; }
 function exportBattleXlsx() {
   var meta = S.rankMeta, rows = rankFiltered();
   if (!meta || !rows.length) { toast('書き出すQRがありません'); return; }
@@ -1452,7 +1464,7 @@ function exportBattleXlsx() {
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'QR部門エントリー');
   var d = $('rDiv').value;
-  XLSX.writeFile(wb, 'QRバトル_エントリーシート_' + meta.cycle + 'か月目' + (d ? '_' + d : '') + '_' + ymd(new Date()) + '.xlsx');
+  XLSX.writeFile(wb, 'QRバトル_エントリーシート_' + ymLabel(meta.ym) + (d ? '_' + d : '') + '_' + ymd(new Date()) + '.xlsx');
   toast('Excel を書き出しました');
 }
 $('rXlsx').onclick = exportBattleXlsx;
