@@ -1464,9 +1464,12 @@ function exportBattleXlsx() {
   if (!meta || !rows.length) { toast('書き出すQRがありません'); return; }
   var head = ['NO.', '原稿ID', 'QRコードID', 'エントリー部門', 'クライアント名', '媒体種', '部数・個数', 'QR計測期間(31日間以内) 開始日', '終了日'];
   var aoa = [['【全員対象】QR部門　エントリーシート'], head].concat(rows.map(function (q, i) {
-    return [i + 1, '', q.qid || '', q.division || '', clientOf(q.name), '自社紙媒体', circulationOf(q.name), slashDate(q.from), slashDate(q.to)];
+    // 媒体種: 名称に版名（一宮版など）があれば自社紙媒体、無ければ他社紙媒体
+    return [i + 1, '', q.qid || '', q.division || '', clientOf(q.name), battleSuggest(q.name) ? '自社紙媒体' : '他社紙媒体', circulationOf(q.name), slashDate(q.from), slashDate(q.to)];
   }));
   var ws = XLSX.utils.aoa_to_sheet(aoa);
+  // 部数は桁区切り（#,##0）で表示
+  for (var ri = 2; ri < aoa.length; ri++) { var cell = ws[XLSX.utils.encode_cell({ r: ri, c: 6 })]; if (cell && typeof cell.v === 'number') cell.z = '#,##0'; }
   ws['!cols'] = [5, 10, 12, 16, 22, 12, 12, 26, 12].map(function (w) { return { wch: w }; });
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'QR部門エントリー');
