@@ -157,6 +157,8 @@
   .hint.auto { color: #1d4ed8; }
   .hint.est { color: #b45309; }
   .live { background: #ecfeff; color: #0e7490; border-radius: 4px; padding: 1px 6px; font-size: 11px; white-space: nowrap; }
+  .div { display: inline-block; background: #fef3c7; color: #92400e; border-radius: 4px; padding: 1px 7px; font-size: 11.5px; white-space: nowrap; }
+  .zero { color: var(--faint); }
 
   /* ランキング */
   .rank td:first-child { width: 56px; }
@@ -245,7 +247,7 @@
             </select>
             <div class="search">
               <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
-              <input type="text" id="q" placeholder="名称・URL・ジャンル・作成者で検索">
+              <input type="text" id="q" placeholder="ID・名称・URL・ジャンル・部門・作成者で検索">
             </div>
             <select id="qGenre"><option value="">ジャンル：すべて</option></select>
             <span class="count" id="count"></span>
@@ -253,7 +255,7 @@
           <div class="tbl">
             <table>
               <thead><tr>
-                <th data-sort="code" class="hide-sm">CODE</th>
+                <th data-sort="qid" class="hide-sm">ID</th>
                 <th data-sort="name">名称</th>
                 <th data-sort="genre">ジャンル</th>
                 <th data-sort="ownerName" class="hide-sm">作成者</th>
@@ -277,6 +279,7 @@
               <div class="form">
                 <label for="nName">名称</label><input type="text" id="nName" placeholder="例：2612一宮版_○○様_求人">
                 <label for="nBattle">QRバトル集計開始日</label><div><input type="date" id="nBattle"><div class="hint" id="nBattleHint"></div></div>
+                <label for="nDivision">QRバトル<br>エントリー部門</label><select id="nDivision"><option value="">（エントリーしない）</option></select>
                 <label for="nGenre">ジャンル</label><select id="nGenre"><option value="">選んでください</option></select>
                 <label for="nUrl">飛び先URL</label><input type="url" id="nUrl" placeholder="https://">
                 <span></span><div><button class="btn primary" id="nSave">QRを発行する</button></div>
@@ -297,8 +300,11 @@
         <div class="card">
           <div class="bar">
             <select id="rPeriod"></select>
+            <select id="rDiv"><option value="">部門：すべて</option></select>
             <select id="rGenre"><option value="">ジャンル：すべて</option></select>
             <span class="muted" id="rInfo" style="font-size:12px"></span>
+            <span class="sp"></span>
+            <button class="btn" id="rXlsx" title="エントリーシートの形で Excel に書き出す"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M6 11l6 6 6-6M4 21h16"/></svg>Excel出力</button>
           </div>
           <div class="tbl">
             <table class="rank">
@@ -524,7 +530,10 @@ var WORKER_URL = 'https://kcreate-qr.k-create.workers.dev';
 var BASE_URL = WORKER_URL + '/'; // QRに入れるURLの頭（独自ドメインにしたら settings シートの base_url で上書き）
 var DEFAULT_GENRES = ['グルメ', 'スクール', 'ショップ', '暮らし', 'トータルケア', 'クリニック', '介護・福祉', '終活・士業', '企業', 'その他'];
 // battle_start = QRバトル集計開始日（任意・yyyy-MM-dd）。配布開始日。ランキング「QRバトル」はこの日から1か月ずつ区切って数える
-var QR_HEAD = ['code', 'name', 'genre', 'url', 'owner_email', 'owner_name', 'created', 'updated', 'deleted', 'deleted_by', 'battle_start'];
+// qid = QRのID（担当者ごとの英字＋6桁の連番。例 A000001。削除しても番号は再利用しない）／division = QRバトルのエントリー部門（任意）
+var QR_HEAD = ['code', 'name', 'genre', 'url', 'owner_email', 'owner_name', 'created', 'updated', 'deleted', 'deleted_by', 'battle_start', 'qid', 'division'];
+var MEMBER_HEAD = ['email', 'name', 'prefix']; // prefix = IDの英字（A, B, … Z, AA, AB …）。管理者はシートで変えてもよい
+var DEFAULT_DIVISIONS = ['表紙巻頭部門', 'グルメ部門', 'ビューティー部門', 'ヘルス部門', 'スクール部門', 'ハウジング部門', 'その他部門', '求人部門'];
 var CODE_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789'; // 見間違えやすい i l o 0 1 を除く
 
 function doGet() {
@@ -540,13 +549,15 @@ function setup() {
   var ss = id ? SpreadsheetApp.openById(id) : SpreadsheetApp.create('QRコード管理データ');
   ensureSheet_(ss, 'qr', QR_HEAD);
   ss.getSheetByName('qr').getRange('A:A').setNumberFormat('@');
-  ss.getSheetByName('qr').getRange('K:K').setNumberFormat('@');
+  ss.getSheetByName('qr').getRange('K:M').setNumberFormat('@');
   var genres = ensureSheet_(ss, 'genres', ['genre']);
   if (genres.getLastRow() < 2) genres.getRange(2, 1, DEFAULT_GENRES.length, 1).setValues(DEFAULT_GENRES.map(function (g) { return [g]; }));
   var admins = ensureSheet_(ss, 'admins', ['email']);
   if (admins.getLastRow() < 2) admins.appendRow([Session.getEffectiveUser().getEmail()]);
-  ensureSheet_(ss, 'members', ['email', 'name']);
+  ensureSheet_(ss, 'members', MEMBER_HEAD);
   ensureSheet_(ss, 'settings', ['key', 'value']);
+  var divisions = ensureSheet_(ss, 'divisions', ['division']);
+  if (divisions.getLastRow() < 2) divisions.getRange(2, 1, DEFAULT_DIVISIONS.length, 1).setValues(DEFAULT_DIVISIONS.map(function (g) { return [g]; }));
   var def = ss.getSheetByName('Sheet1') || ss.getSheetByName('シート1');
   if (def && ss.getSheets().length > 1) ss.deleteSheet(def);
   props.setProperty('SHEET_ID', ss.getId());
@@ -554,14 +565,20 @@ function setup() {
   Logger.log(ss.getUrl());
 }
 
-// 2026-10-26 に battle_start 列を追加。前からあるシートには見出しを足す（既存行は空欄のまま）
-function ensureBattleCol_() {
-  var sh = sheet_('qr');
+// 2026-10-26 に battle_start / qid / division 列と members.prefix、divisions シートを追加。
+// 前からあるシートには見出しを足す（既存行は空欄のまま。ID は ensureIds_ が作成順に補う）
+function ensureColumns_() {
+  var ss = ss_(), sh = sheet_('qr');
   var w = Math.max(sh.getLastColumn(), QR_HEAD.length);
   var head = sh.getRange(1, 1, 1, w).getValues()[0];
-  if (String(head[QR_HEAD.length - 1]) !== 'battle_start') {
-    sh.getRange(1, QR_HEAD.length).setValue('battle_start');
-    sh.getRange('K:K').setNumberFormat('@');
+  for (var i = 10; i < QR_HEAD.length; i++) {
+    if (String(head[i] || '') !== QR_HEAD[i]) { sh.getRange(1, i + 1).setValue(QR_HEAD[i]); sh.getRange('K:M').setNumberFormat('@'); }
+  }
+  var mem = sheet_('members');
+  if (String(mem.getRange(1, 3).getValue() || '') !== 'prefix') mem.getRange(1, 3).setValue('prefix');
+  if (!ss.getSheetByName('divisions')) {
+    var d = ensureSheet_(ss, 'divisions', ['division']);
+    d.getRange(2, 1, DEFAULT_DIVISIONS.length, 1).setValues(DEFAULT_DIVISIONS.map(function (g) { return [g]; }));
   }
 }
 
@@ -603,13 +620,64 @@ function memberMap_() {
 }
 
 function genres_() { return rows_('genres').map(function (r) { return String(r[0]); }).filter(String); }
+function divisions_() { return rows_('divisions').map(function (r) { return String(r[0]); }).filter(String); }
+function ownerEmail_() { var r = rows_('admins')[0]; return r ? String(r[0]).toLowerCase() : ''; }
+
+// ---------- ID（担当者の英字＋連番） ----------
+function prefixAt_(i) { return i < 26 ? String.fromCharCode(65 + i) : String.fromCharCode(65 + Math.floor(i / 26) - 1) + String.fromCharCode(65 + (i % 26)); }
+// その人の英字。無ければ空いている英字を順に割り当てて members に書く。
+// A は最初の管理者（オーナー）のために取っておき、他の人は B から（オーナーが別の英字を持っていれば A も使う）
+function prefixFor_(email) {
+  var sh = sheet_('members'), rows = rows_('members'), used = {}, idx = -1, owner = ownerEmail_(), ownerHas = false;
+  rows.forEach(function (r, i) {
+    var p = String(r[2] || '').trim().toUpperCase();
+    if (p) used[p] = true;
+    if (String(r[0]).toLowerCase() === email) idx = i;
+    if (String(r[0]).toLowerCase() === owner && p) ownerHas = true;
+  });
+  if (idx >= 0 && String(rows[idx][2] || '').trim()) return String(rows[idx][2]).trim().toUpperCase();
+  var p = '';
+  if (email === owner && !used['A']) p = 'A';
+  if (email !== owner && !ownerHas) used['A'] = true;
+  for (var i = 0; !p; i++) { var c = prefixAt_(i); if (!used[c]) p = c; }
+  if (idx >= 0) sh.getRange(idx + 2, 3).setValue(p); else sh.appendRow([email, '', p]);
+  return p;
+}
+function fmtQid_(prefix, n) { return prefix + ('000000' + n).slice(-6); }
+// その英字の次の番号（ゴミ箱の分も数える＝番号は再利用しない）
+function nextQid_(prefix) {
+  var max = 0;
+  rows_('qr').forEach(function (r) {
+    var s = String(r[11] || '');
+    if (s.indexOf(prefix) === 0 && /^\d+$/.test(s.slice(prefix.length))) max = Math.max(max, +s.slice(prefix.length));
+  });
+  return fmtQid_(prefix, max + 1);
+}
+// ID の無い行（列を足す前に作ったQR）に作成順で ID を付ける
+function ensureIds_() {
+  var sh = sheet_('qr'), rows = rows_('qr'), todo = [];
+  rows.forEach(function (r, i) { if (r[0] && !String(r[11] || '')) todo.push({ i: i, email: String(r[4]).toLowerCase(), created: str_(r[6]) }); });
+  if (!todo.length) return;
+  var lock = LockService.getScriptLock();
+  if (!lock.tryLock(5000)) return;
+  try {
+    todo.sort(function (a, b) { return a.created < b.created ? -1 : a.created > b.created ? 1 : a.i - b.i; });
+    var seq = {};
+    todo.forEach(function (t) {
+      var p = prefixFor_(t.email);
+      if (seq[p] === undefined) seq[p] = +nextQid_(p).slice(p.length) - 1;
+      seq[p]++;
+      sh.getRange(t.i + 2, 12).setValue(fmtQid_(p, seq[p]));
+    });
+  } finally { lock.releaseLock(); }
+}
 
 function qrObj_(r) {
   return {
     code: String(r[0]), name: String(r[1]), genre: String(r[2]), url: String(r[3]),
     ownerEmail: String(r[4]).toLowerCase(), ownerName: String(r[5]),
     created: str_(r[6]), updated: str_(r[7]), deleted: r[8] ? str_(r[8]) : '', deletedBy: String(r[9] || ''),
-    battleStart: r[10] ? str_(r[10]) : ''
+    battleStart: r[10] ? str_(r[10]) : '', qid: String(r[11] || ''), division: String(r[12] || '')
   };
 }
 
@@ -632,7 +700,9 @@ function checkFields_(f) {
   if (genres_().indexOf(f.genre) < 0) throw new Error('ジャンルを選んでください');
   var bs = String(f.battleStart || '').trim();
   if (bs && !/^\d{4}-\d{2}-\d{2}$/.test(bs)) throw new Error('QRバトル集計開始日は 年-月-日 の形で入力してください（空欄でも登録できます）');
-  return { name: name, genre: f.genre, url: checkUrl_(f.url), battleStart: bs };
+  var dv = String(f.division || '').trim();
+  if (dv && divisions_().indexOf(dv) < 0) throw new Error('エントリー部門は一覧から選んでください');
+  return { name: name, genre: f.genre, url: checkUrl_(f.url), battleStart: bs, division: dv };
 }
 
 function canEdit_(q, email) { return q.ownerEmail === email || isAdmin_(email); }
@@ -671,10 +741,12 @@ function init() {
   var email = myEmail_();
   if (!email) throw new Error('ログイン情報が取得できません。会社のGoogleアカウントで開いてください');
   if (!ss_().getSheetByName('qr')) setup();
-  ensureBattleCol_();
+  ensureColumns_();
+  ensureIds_();
   return {
     me: { email: email, name: memberMap_()[email] || '', isAdmin: isAdmin_(email) },
     genres: genres_(),
+    divisions: divisions_(),
     baseUrl: setting_('base_url') || BASE_URL,
     fallbackUrl: setting_('fallback_url') || 'https://www.k-create.co.jp/'
   };
@@ -737,7 +809,8 @@ function createQr(f) {
     var code = newCode_(used);
     var t = now_();
     putLink_(code, v.url, false);
-    var row = [code, v.name, v.genre, v.url, email, name, t, t, '', '', v.battleStart];
+    var qid = nextQid_(prefixFor_(email));
+    var row = [code, v.name, v.genre, v.url, email, name, t, t, '', '', v.battleStart, qid, v.division];
     sheet_('qr').appendRow(row);
     return qrObj_(row);
   } finally { lock.releaseLock(); }
@@ -753,6 +826,7 @@ function updateQr(code, f) {
   sh.getRange(row, 2, 1, 3).setValues([[v.name, v.genre, v.url]]);
   sh.getRange(row, 8).setValue(now_());
   sh.getRange(row, 11).setValue(v.battleStart);
+  sh.getRange(row, 13).setValue(v.division);
   return true;
 }
 
@@ -815,6 +889,7 @@ function daysBetween_(a, b) { return Math.round((new Date(b + 'T00:00:00Z') - ne
 
 // QRバトルのランキング。cycle=1 は各QRの計測開始日から1か月、2 はその次の1か月…
 // 計測開始日の無いQR・まだ開始日が来ていないQRは対象外。期間が終わっていないものは「集計中」（done=false）
+// 0回のQRも出す（エントリーシートに全件載せるため）。累計 total も付ける
 function getBattleRanking(cycle, limit) {
   cycle = Math.max(1, Math.min(12, parseInt(cycle, 10) || 1));
   var today = ymd_(new Date());
@@ -828,13 +903,14 @@ function getBattleRanking(cycle, limit) {
     return q;
   }).filter(function (q) { return q.from <= today; });
   var counts = items.length ? counts_(items.map(function (q) { return { code: q.code, from: q.from, to: q.to }; })) : {};
+  var all_ = items.length ? totals_('0000-00-00', '9999-99-99') : {};
   var list = items.map(function (q) {
     q.count = counts[q.code] || 0;
+    q.total = all_[q.code] || 0;
     q.done = q.to < today;
     q.day = Math.min(daysBetween_(q.from, today), daysBetween_(q.from, q.to)) + 1;
     return q;
-  }).filter(function (q) { return q.count > 0; })
-    .sort(function (a, b) { return b.count - a.count || a.name.localeCompare(b.name, 'ja'); })
+  }).sort(function (a, b) { return b.count - a.count || b.total - a.total || String(a.qid).localeCompare(String(b.qid)); })
     .slice(0, limit || 30);
   return { cycle: cycle, list: list, entrants: items.length, notStarted: withDate.length - items.length, noDate: all.length - withDate.length };
 }
@@ -886,7 +962,10 @@ var WORKER_TOKEN = 'test-token';
       var keys = Object.keys(SCHED[it[3]]).sort().filter(function (k) { return SCHED[it[3]][k] >= cmin; });
       if (keys.length) { start = SCHED[it[3]][keys[0]]; name = keys[0] + it[3] + '版_' + name; }
     }
-    var q = createQr({ name: name, genre: it[1], url: 'https://example.jp/sample/' + (i + 1), battleStart: start });
+    // 版つきのものはエントリー部門も付ける（名称・ジャンルから）
+    var DIV = { 'グルメ': 'グルメ部門', 'スクール': 'スクール部門', 'トータルケア': 'ビューティー部門', 'クリニック': 'ヘルス部門', '暮らし': 'ハウジング部門', '企業': '求人部門', 'ショップ': 'その他部門', 'その他': 'その他部門' };
+    var division = start ? (/表紙/.test(name) ? '表紙巻頭部門' : /求人/.test(name) ? '求人部門' : DIV[it[1]] || 'その他部門') : '';
+    var q = createQr({ name: name, genre: it[1], url: 'https://example.jp/sample/' + (i + 1), battleStart: start, division: division });
     var stamp = Utilities.formatDate(created, TZ, 'yyyy-MM-dd') + ' ' + ('0' + (9 + Math.floor(rand() * 9))).slice(-2) + ':' + ('0' + Math.floor(rand() * 60)).slice(-2);
     sh.getRange(i + 2, 7, 1, 2).setValues([[stamp, stamp]]);
     // 配布直後に多く、だんだん減る。週末は少し多め。集計開始日があるものは配布開始日から数え始める（その前はほぼ0）
@@ -920,8 +999,9 @@ var WORKER_TOKEN = 'test-token';
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-var S = { me: null, genres: [], baseUrl: '', list: [], folder: 'all', sort: 'created', desc: true, chart: null, rankMode: 'battle', rankMeta: null };
+var S = { me: null, genres: [], divisions: [], baseUrl: '', list: [], folder: 'all', sort: 'created', desc: true, chart: null, rankMode: 'battle', rankMeta: null };
 var $ = function (id) { return document.getElementById(id); };
 var TITLES = { list: 'QR一覧', 'new': '新規登録', rank: 'ランキング', trash: 'ゴミ箱' };
 // ジャンルの色（背景, 文字）
@@ -1000,6 +1080,10 @@ call('init').then(function (r) {
   ['qGenre', 'nGenre', 'rGenre'].forEach(function (id) {
     S.genres.forEach(function (g) { var o = document.createElement('option'); o.value = o.textContent = g; $(id).appendChild(o); });
   });
+  S.divisions = r.divisions || [];
+  ['nDivision', 'rDiv'].forEach(function (id) {
+    S.divisions.forEach(function (g) { var o = document.createElement('option'); o.value = o.textContent = g; $(id).appendChild(o); });
+  });
   buildPeriods();
   $('boot').classList.add('hide');
   if (!r.me.name) openName(true);
@@ -1072,7 +1156,7 @@ $('folders').onclick = function (e) {
 document.querySelector('#list thead').onclick = function (e) {
   var th = e.target.closest('th'); if (!th) return;
   var k = th.dataset.sort;
-  if (S.sort === k) S.desc = !S.desc; else { S.sort = k; S.desc = (k === 'last30' || k === 'total' || k === 'created'); }
+  if (S.sort === k) S.desc = !S.desc; else { S.sort = k; S.desc = (k === 'last30' || k === 'total' || k === 'created' || k === 'battleStart'); }
   renderList();
 };
 function inFolder() { return S.list.filter(function (q) { return S.folder === 'all' || q.ownerEmail === S.folder; }); }
@@ -1081,7 +1165,7 @@ function filtered() {
   return inFolder().filter(function (q) {
     if (g && q.genre !== g) return false;
     if (!kw) return true;
-    var hay = f === 'name' ? q.name : f === 'url' ? q.url : [q.name, q.url, q.genre, q.ownerName, q.code].join(' ');
+    var hay = f === 'name' ? q.name : f === 'url' ? q.url : [q.name, q.url, q.genre, q.ownerName, q.code, q.qid, q.division].join(' ');
     return hay.toLowerCase().indexOf(kw) >= 0;
   }).sort(function (a, b) {
     var x = a[S.sort], y = b[S.sort];
@@ -1104,7 +1188,7 @@ function renderList() {
   });
   var max = list.reduce(function (m, q) { return Math.max(m, q.last30); }, 0);
   $('rows').innerHTML = list.length ? list.map(function (q) {
-    return '<tr class="row" data-c="' + esc(q.code) + '"><td class="hide-sm"><span class="code">' + esc(q.code) + '</span></td>' +
+    return '<tr class="row" data-c="' + esc(q.code) + '"><td class="hide-sm"><span class="code">' + esc(q.qid || '−') + '</span></td>' +
       '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
       '<td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
       '<td class="date hide-sm">' + (q.battleStart ? esc(q.battleStart) : '<span class="muted">−</span>') + '</td>' +
@@ -1118,17 +1202,18 @@ $('rows').onclick = function (e) {
 
 // ---------- 詳細（グラフ・編集） ----------
 function genreOptions(sel) { return S.genres.map(function (g) { return '<option' + (g === sel ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join(''); }
+function divOptions(sel) { return S.divisions.map(function (g) { return '<option' + (g === sel ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join(''); }
 function openDetail(q) {
   if (!q) return;
   var edit = canEdit(q);
   var today = new Date(), from = new Date(today.getTime() - 29 * 86400000);
   $('mBody').innerHTML =
     '<div class="mhead"><h2>' + esc(q.name) + '</h2>' +
-      '<div class="meta"><span class="code">' + esc(q.code) + '</span>' + tag(q.genre) + who(q.ownerName) +
+      '<div class="meta"><span class="code">' + esc(q.qid || '') + '</span>' + tag(q.genre) + (q.division ? '<span class="div">' + esc(q.division) + '</span>' : '') + who(q.ownerName) +
       '<span class="mono">作成 ' + esc(q.created) + '</span><span class="mono">更新 ' + esc(q.updated) + '</span>' +
       (q.battleStart ? '<span class="mono">QRバトル ' + esc(q.battleStart) + '〜</span>' : '') + '</div></div>' +
     '<div class="detail"><div><div id="dQr"></div>' +
-      '<dl class="kv"><dt>QRの中身</dt><dd class="mono" style="font-size:12px">' + esc(shortUrl(q.code)) + '</dd>' +
+      '<dl class="kv"><dt>ID</dt><dd class="mono">' + esc(q.qid || '−') + '</dd><dt>QRの中身</dt><dd class="mono" style="font-size:12px">' + esc(shortUrl(q.code)) + '</dd>' +
       '<dt>飛び先</dt><dd><a href="' + esc(q.url) + '" target="_blank" rel="noopener" style="color:var(--accent);font-size:12.5px">' + esc(q.url) + '</a></dd></dl>' +
     '</div><div>' +
       '<div class="range">' +
@@ -1143,6 +1228,7 @@ function openDetail(q) {
       '<div class="form">' +
         '<label>名称</label><input type="text" id="eName" value="' + esc(q.name) + '">' +
         '<label>QRバトル集計開始日</label><div><input type="date" id="eBattle"><div class="hint" id="eBattleHint"></div></div>' +
+        '<label>QRバトル エントリー部門</label><select id="eDivision"><option value="">（エントリーしない）</option>' + divOptions(q.division) + '</select>' +
         '<label>ジャンル</label><select id="eGenre">' + genreOptions(q.genre) + '</select>' +
         '<label>飛び先URL</label><input type="url" id="eUrl" value="' + esc(q.url) + '">' +
         '<span></span><div style="display:flex;gap:8px"><button class="btn primary" id="eSave">保存</button><span style="flex:1"></span><button class="btn danger" id="eDel">削除</button></div>' +
@@ -1166,7 +1252,7 @@ function openDetail(q) {
       var b = this; b.disabled = true; $('eErr').textContent = '';
       var url = $('eUrl').value.trim();
       if (url !== q.url && !confirm('飛び先URLを変更します。印刷済みのQRも新しい飛び先に移動します。よろしいですか？')) { b.disabled = false; return; }
-      call('updateQr', q.code, { name: $('eName').value, genre: $('eGenre').value, url: url, battleStart: $('eBattle').value })
+      call('updateQr', q.code, { name: $('eName').value, genre: $('eGenre').value, url: url, battleStart: $('eBattle').value, division: $('eDivision').value })
         .then(function () { toast('保存しました'); closeModal(); loadList(); })
         .catch(function (e) { $('eErr').textContent = e.message; b.disabled = false; });
     };
@@ -1274,15 +1360,16 @@ bindBattle($('nName'), $('nBattle'), $('nBattleHint'), '');
 // ---------- 新規登録 ----------
 $('nSave').onclick = function () {
   var b = this; b.disabled = true; $('nErr').textContent = '';
-  call('createQr', { name: $('nName').value, genre: $('nGenre').value, url: $('nUrl').value, battleStart: $('nBattle').value })
+  call('createQr', { name: $('nName').value, genre: $('nGenre').value, url: $('nUrl').value, battleStart: $('nBattle').value, division: $('nDivision').value })
     .then(function (q) {
       q.ownerName = S.me.name; q.last30 = 0; q.total = 0;
       $('made').innerHTML = '<div id="madeQr"></div>' +
-        '<dl class="kv"><dt>名称</dt><dd><b>' + esc(q.name) + '</b></dd><dt>コード</dt><dd><span class="code">' + esc(q.code) + '</span></dd>' +
+        '<dl class="kv"><dt>ID</dt><dd><span class="code">' + esc(q.qid) + '</span></dd><dt>名称</dt><dd><b>' + esc(q.name) + '</b></dd><dt>コード</dt><dd><span class="code">' + esc(q.code) + '</span></dd>' +
         '<dt>QRの中身</dt><dd class="mono" style="font-size:12px">' + esc(shortUrl(q.code)) + '</dd><dt>飛び先</dt><dd style="font-size:12.5px">' + esc(q.url) + '</dd>' +
-        (q.battleStart ? '<dt>集計開始</dt><dd class="mono" style="font-size:12.5px">' + esc(q.battleStart) + '</dd>' : '') + '</dl>';
+        (q.battleStart ? '<dt>集計開始</dt><dd class="mono" style="font-size:12.5px">' + esc(q.battleStart) + '</dd>' : '') +
+        (q.division ? '<dt>部門</dt><dd>' + esc(q.division) + '</dd>' : '') + '</dl>';
       $('madeQr').appendChild(qrPanel(q));
-      $('nName').value = ''; $('nUrl').value = ''; $('nGenre').value = ''; resetBattle($('nBattle'), $('nBattleHint'));
+      $('nName').value = ''; $('nUrl').value = ''; $('nGenre').value = ''; $('nDivision').value = ''; resetBattle($('nBattle'), $('nBattleHint'));
       toast('QRを発行しました');
     }).catch(function (e) { $('nErr').textContent = e.message; })
     .then(function () { b.disabled = false; });
@@ -1301,43 +1388,74 @@ function buildPeriods() {
   o += '<optgroup label="期間で見る">' + m.map(function (x) { return '<option value="' + x[0] + '">' + x[1] + '</option>'; }).join('') + '</optgroup>';
   $('rPeriod').innerHTML = o;
 }
-$('rPeriod').onchange = loadRank; $('rGenre').onchange = function () { renderRank(); };
+$('rPeriod').onchange = loadRank; $('rGenre').onchange = function () { renderRank(); }; $('rDiv').onchange = function () { renderRank(); };
 function loadRank() {
   var v = $('rPeriod').value, t = new Date();
   $('crumb').textContent = '/ ' + $('rPeriod').selectedOptions[0].textContent;
-  $('rRows').innerHTML = '<tr><td colspan="6" class="loading">集計中…</td></tr>';
+  $('rRows').innerHTML = '<tr><td colspan="9" class="loading">集計中…</td></tr>';
   $('rInfo').textContent = '';
   var battle = /^battle(\d+)$/.exec(v);
   S.rankMode = battle ? 'battle' : 'period';
+  $('rXlsx').classList.toggle('hide', !battle);
   var p;
-  if (battle) p = call('getBattleRanking', +battle[1], 200).then(function (r) { S.rank = r.list; S.rankMeta = r; });
+  if (battle) p = call('getBattleRanking', +battle[1], 1000).then(function (r) { S.rank = r.list; S.rankMeta = r; });
   else {
     var from, to;
     if (v === 'last30') { to = ymd(t); from = ymd(new Date(t.getTime() - 29 * 86400000)); }
     else { var y = +v.slice(0, 4), mo = +v.slice(5); from = v + '-01'; to = ymd(new Date(y, mo, 0)); }
     p = call('getRanking', from, to, 200).then(function (r) { S.rank = r; S.rankMeta = null; });
   }
-  p.then(renderRank).catch(function (e) { $('rRows').innerHTML = '<tr><td colspan="6" class="err">' + esc(e.message) + '</td></tr>'; });
+  p.then(renderRank).catch(function (e) { $('rRows').innerHTML = '<tr><td colspan="9" class="err">' + esc(e.message) + '</td></tr>'; });
 }
 function mdLabel(s) { return s ? (+s.slice(5, 7)) + '/' + (+s.slice(8, 10)) : ''; }
+function rankFiltered() {
+  var g = $('rGenre').value, d = $('rDiv').value;
+  return (S.rank || []).filter(function (q) { return (!g || q.genre === g) && (!d || q.division === d); });
+}
 function renderRank() {
-  var g = $('rGenre').value, battle = S.rankMode === 'battle', meta = S.rankMeta;
-  $('rHead').innerHTML = '<th>順位</th><th>名称</th><th>ジャンル</th><th class="hide-sm">作成者</th>' + (battle ? '<th class="hide-sm">集計期間</th>' : '') + '<th class="num">読み取り</th>';
-  var r = (S.rank || []).filter(function (q) { return !g || q.genre === g; }).slice(0, 30);
+  var battle = S.rankMode === 'battle', meta = S.rankMeta;
+  $('rHead').innerHTML = '<th>順位</th><th>ID</th><th>名称</th>' +
+    (battle ? '<th>部門</th><th class="hide-sm">作成者</th><th class="hide-sm">集計期間</th><th class="num">期間の読み取り</th><th class="num hide-sm">累計</th>'
+            : '<th>ジャンル</th><th class="hide-sm">作成者</th><th class="num">読み取り</th>');
+  var all = rankFiltered(), r = all.slice(0, battle ? 100 : 30);
   var max = r.length ? r[0].count : 0;
   if (battle && meta) {
-    $('rInfo').textContent = '各QRの集計開始日から' + meta.cycle + 'か月目の読み取り回数で並べています。対象 ' + meta.entrants + '件' +
-      (meta.notStarted ? '（開始日がまだ来ていないQR ' + meta.notStarted + '件は含みません）' : '') +
+    $('rInfo').textContent = '各QRの集計開始日から' + meta.cycle + 'か月目の読み取り回数で並べています。対象 ' + all.length + '件' +
+      (all.length !== meta.entrants ? '（絞り込み前 ' + meta.entrants + '件）' : '') +
+      (meta.notStarted ? '／開始日がまだ来ていないQR ' + meta.notStarted + '件は含みません' : '') +
       (meta.noDate ? '／集計開始日が未設定のQR ' + meta.noDate + '件は対象外' : '');
   }
   $('rRows').innerHTML = r.length ? r.map(function (q, i) {
-    return '<tr class="row" data-c="' + esc(q.code) + '"><td><span class="medal' + (i < 3 ? ' m' + (i + 1) : '') + '">' + (i + 1) + '</span></td>' +
+    return '<tr class="row' + (q.count ? '' : ' zero') + '" data-c="' + esc(q.code) + '"><td><span class="medal' + (i < 3 && q.count ? ' m' + (i + 1) : '') + '">' + (i + 1) + '</span></td>' +
+      '<td><span class="code">' + esc(q.qid || '−') + '</span></td>' +
       '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
-      '<td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td>' +
-      (battle ? '<td class="date hide-sm">' + esc(mdLabel(q.from)) + '〜' + esc(mdLabel(q.to)) + (q.done ? '' : ' <span class="live">集計中 ' + q.day + '日目</span>') + '</td>' : '') +
-      '<td class="num">' + meter(q.count, max) + '</td></tr>';
-  }).join('') : '<tr><td colspan="6" class="loading">' + (battle ? 'QRバトル集計開始日が入っているQRで、この期間に読み取られたものはまだありません' : 'この期間の読み取りはまだありません') + '</td></tr>';
+      (battle
+        ? '<td>' + (q.division ? '<span class="div">' + esc(q.division) + '</span>' : '<span class="muted">−</span>') + '</td><td class="hide-sm">' + who(q.ownerName) + '</td>' +
+          '<td class="date hide-sm">' + esc(mdLabel(q.from)) + '〜' + esc(mdLabel(q.to)) + (q.done ? '' : ' <span class="live">集計中 ' + q.day + '日目</span>') + '</td>' +
+          '<td class="num">' + meter(q.count, max) + '</td><td class="num hide-sm">' + fmt(q.total) + '</td>'
+        : '<td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="num">' + meter(q.count, max) + '</td>') + '</tr>';
+  }).join('') : '<tr><td colspan="9" class="loading">' + (battle ? 'QRバトル集計開始日が入っていて、この期間に入っているQRはまだありません' : 'この期間の読み取りはまだありません') + '</td></tr>';
 }
+// エントリーシート（提出用）の形で Excel に書き出す。クライアント名・原稿IDは空欄（あとで記入）
+function slashDate(s) { return s ? s.slice(0, 4) + '/' + (+s.slice(5, 7)) + '/' + (+s.slice(8, 10)) : ''; }
+function circulationOf(name) { var ed = battleSuggest(name); return ed ? (ed.edition === '一宮' ? 200000 : 60000) : ''; }
+function exportBattleXlsx() {
+  var meta = S.rankMeta, rows = rankFiltered();
+  if (!meta || !rows.length) { toast('書き出すQRがありません'); return; }
+  var head = ['NO.', '原稿ID', 'QRコードID', 'エントリー部門', 'クライアント名', '媒体種', '部数・個数', 'QR計測期間 開始日', 'QR計測期間 終了日', '期間の読み取り回数', '累計読み取り回数', '集計状況', 'QR名称', '作成者', '飛び先URL'];
+  var aoa = [head].concat(rows.map(function (q, i) {
+    return [i + 1, '', q.qid || '', q.division || '', '', '自社紙媒体', circulationOf(q.name), slashDate(q.from), slashDate(q.to), q.count, q.total,
+      q.done ? '集計済み' : '集計中（' + q.day + '日目）', q.name, q.ownerName, q.url];
+  }));
+  var ws = XLSX.utils.aoa_to_sheet(aoa);
+  ws['!cols'] = [4, 10, 12, 16, 22, 12, 12, 14, 14, 14, 14, 14, 40, 10, 40].map(function (w) { return { wch: w }; });
+  var wb = XLSX.utils.book_new();
+  XLSX.utils.book_append_sheet(wb, ws, 'QR部門エントリー');
+  var d = $('rDiv').value;
+  XLSX.writeFile(wb, 'QRバトル_エントリーシート_' + meta.cycle + 'か月目' + (d ? '_' + d : '') + '_' + ymd(new Date()) + '.xlsx');
+  toast('Excel を書き出しました');
+}
+$('rXlsx').onclick = exportBattleXlsx;
 $('rRows').onclick = function (e) {
   var tr = e.target.closest('tr.row'); if (!tr) return;
   var hit = S.list.filter(function (q) { return q.code === tr.dataset.c; })[0];
