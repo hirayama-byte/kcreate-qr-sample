@@ -1,0 +1,190 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>QRコード管理 使い方ガイド</title>
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;700&family=JetBrains+Mono:wght@500&display=swap">
+<style>
+  /* レイアウト: 紺のヘッダー帯（管理画面のサイドバーと同じ色）＋ 1カラムの読み物。左に細い目次。 */
+  :root {
+    --bg: #f5f7fb; --fg: #0f172a; --muted: #5b6b85; --faint: #8a98b0; --line: #dfe5ef; --card: #ffffff;
+    --navy: #0f172a; --navy-fg: #e2e8f0; --accent: #2563eb; --accent-soft: #e8f0fe; --warn-bg: #fff7e0; --warn-fg: #7a4b00; --ok: #0e7490;
+    --sans: "Noto Sans JP", "Hiragino Sans", "Yu Gothic", sans-serif; --mono: "JetBrains Mono", Consolas, monospace;
+  }
+  @media (prefers-color-scheme: dark) { :root:not([data-theme="light"]) {
+    --bg: #0b1220; --fg: #e5eaf3; --muted: #a3b0c6; --faint: #7a889f; --line: #233049; --card: #121b2d;
+    --navy: #0f172a; --navy-fg: #e2e8f0; --accent: #7aa7ff; --accent-soft: #16233d; --warn-bg: #2a2110; --warn-fg: #f3c56b; --ok: #67d4e8; color-scheme: dark; } }
+  :root[data-theme="dark"] {
+    --bg: #0b1220; --fg: #e5eaf3; --muted: #a3b0c6; --faint: #7a889f; --line: #233049; --card: #121b2d;
+    --navy: #0f172a; --navy-fg: #e2e8f0; --accent: #7aa7ff; --accent-soft: #16233d; --warn-bg: #2a2110; --warn-fg: #f3c56b; --ok: #67d4e8; color-scheme: dark; }
+
+  body { background: var(--bg); color: var(--fg); font-family: var(--sans); font-size: 15px; line-height: 1.8; }
+  .band { background: var(--navy); color: var(--navy-fg); }
+  .band .in { max-width: 920px; margin: 0 auto; padding-block: 34px 30px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); }
+  .brand { display: flex; align-items: center; gap: 10px; font-size: 13px; letter-spacing: .08em; text-transform: uppercase; color: #93a4c3; }
+  .brand i { display: inline-grid; place-items: center; width: 26px; height: 26px; border-radius: 7px; background: var(--accent); }
+  h1 { margin: 10px 0 6px; font-size: clamp(24px, 4vw, 34px); line-height: 1.3; text-wrap: balance; }
+  .lead { margin: 0; color: #c7d2e6; max-width: 40em; }
+  .cta { display: inline-flex; align-items: center; gap: 8px; margin-top: 18px; background: #fff; color: var(--navy); font-weight: 700; text-decoration: none; border-radius: 10px; padding: 10px 16px; }
+  .cta:hover { background: #e8f0fe; }
+  .cta small { font-weight: 400; color: #475569; }
+
+  .wrap { max-width: 920px; margin: 0 auto; padding-block: 26px 60px; padding-left: max(16px, env(safe-area-inset-left, 0px)); padding-right: max(16px, env(safe-area-inset-right, 0px)); display: grid; grid-template-columns: 180px minmax(0, 1fr); gap: 32px; }
+  nav.toc { position: sticky; top: calc(16px + env(safe-area-inset-top, 0px)); align-self: start; font-size: 13px; }
+  nav.toc a { display: block; color: var(--muted); text-decoration: none; padding: 5px 0 5px 12px; border-left: 2px solid var(--line); }
+  nav.toc a:hover { color: var(--accent); border-color: var(--accent); }
+  main { min-width: 0; display: grid; gap: 28px; }
+  section { min-width: 0; }
+  h2 { font-size: 19px; margin: 0 0 10px; padding-bottom: 8px; border-bottom: 1px solid var(--line); display: flex; align-items: baseline; gap: 10px; text-wrap: balance; }
+  h2 .no { font-family: var(--mono); font-size: 12px; color: var(--accent); letter-spacing: .05em; }
+  h3 { font-size: 15.5px; margin: 18px 0 6px; }
+  p { margin: 0 0 10px; max-width: 42em; }
+  ol, ul { margin: 0; padding-left: 1.4em; max-width: 44em; }
+  li { margin: 4px 0; }
+  li::marker { color: var(--accent); }
+  code, .mono { font-family: var(--mono); font-size: .92em; }
+  code { background: var(--accent-soft); padding: 1px 6px; border-radius: 5px; }
+  .card { background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 16px 18px; }
+  .steps { display: grid; gap: 10px; counter-reset: step; }
+  .step { display: grid; grid-template-columns: 34px minmax(0, 1fr); gap: 12px; align-items: start; }
+  .step b.n { counter-increment: step; display: inline-grid; place-items: center; width: 30px; height: 30px; border-radius: 50%; background: var(--accent); color: #fff; font-family: var(--mono); font-size: 13px; }
+  .step b.n::before { content: counter(step); }
+  .step .t { font-weight: 700; }
+  .step .d { color: var(--muted); font-size: 14px; }
+  .name { font-family: var(--mono); font-size: 15px; background: var(--card); border: 1px dashed var(--accent); border-radius: 10px; padding: 10px 14px; display: inline-block; margin: 6px 0 2px; }
+  .name span { color: var(--accent); }
+  .tags { display: flex; flex-wrap: wrap; gap: 6px; margin: 6px 0 2px; }
+  .tag { background: var(--warn-bg); color: var(--warn-fg); border-radius: 6px; padding: 2px 9px; font-size: 13px; }
+  table { border-collapse: collapse; width: 100%; font-size: 14px; }
+  .tbl { overflow-x: auto; border: 1px solid var(--line); border-radius: 10px; background: var(--card); }
+  th, td { padding: 8px 12px; text-align: left; border-bottom: 1px solid var(--line); white-space: nowrap; }
+  th { color: var(--muted); font-weight: 500; font-size: 12.5px; }
+  tr:last-child td { border-bottom: 0; }
+  td.num, th.num { text-align: right; font-family: var(--mono); font-variant-numeric: tabular-nums; }
+  .note { background: var(--warn-bg); color: var(--warn-fg); border-radius: 10px; padding: 12px 16px; font-size: 14px; }
+  .faq dt { font-weight: 700; margin-top: 12px; }
+  .faq dd { margin: 2px 0 0; color: var(--muted); }
+  .foot { color: var(--faint); font-size: 12.5px; border-top: 1px solid var(--line); padding-top: 14px; }
+  a { color: var(--accent); }
+  :focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
+  @media (max-width: 760px) {
+    .wrap { grid-template-columns: 1fr; gap: 18px; }
+    nav.toc { position: static; display: flex; flex-wrap: wrap; gap: 4px 10px; }
+    nav.toc a { border-left: 0; padding: 2px 0; }
+    th, td { white-space: normal; }
+  }
+  @media (prefers-reduced-motion: no-preference) { .cta { transition: background .15s; } }
+</style>
+</head>
+<body>
+
+<header class="band">
+  <div class="in">
+    <div class="brand"><i><svg width="14" height="14" viewBox="0 0 24 24" fill="#fff"><path d="M3 3h8v8H3V3zm2 2v4h4V5H5zm8-2h8v8h-8V3zm2 2v4h4V5h-4zM3 13h8v8H3v-8zm2 2v4h4v-4H5zm8-2h2v2h-2v-2zm2 2h2v2h-2v-2zm2-2h2v2h-2v-2zm2 2h2v2h-2v-2zm-6 2h2v2h-2v-2zm4 0h2v2h-2v-2zm-2 2h2v2h-2v-2zm4 0h2v2h-2v-2z"/></svg></i>K-CREATE 社内ツール</div>
+    <h1>QRコード管理 使い方ガイド</h1>
+    <p class="lead">くれよん掲載用のQRを、発行から飛び先の変更、読み取り回数の確認、QRバトルの集計まで、ひとつの画面で管理します。2026年10月リリース。</p>
+    <a class="cta" href="https://script.google.com/a/macros/k-create.co.jp/s/AKfycbyxePfVMRl670N7QIwCwwT0qsjS6Q_0_Yh0T9vwbCiSLX0NGAZMsNcfVT1vjUJOgw_Sxw/exec" target="_blank" rel="noopener">管理画面を開く <small>会社の Google アカウントでログイン</small></a>
+  </div>
+</header>
+
+<div class="wrap">
+  <nav class="toc" aria-label="目次">
+    <a href="#start">はじめに</a>
+    <a href="#new">QRを発行する</a>
+    <a href="#battle">QRバトル</a>
+    <a href="#list">一覧と詳細</a>
+    <a href="#rank">ランキングとExcel</a>
+    <a href="#faq">よくある質問</a>
+  </nav>
+
+  <main>
+    <section id="start">
+      <h2><span class="no">01</span>はじめに</h2>
+      <p>管理画面は会社の Google アカウント（@k-create.co.jp）でログインして使います。初めて開いたときに自分の名前を登録してください。左のフォルダ名と、発行したQRの作成者名になります。名前は左下の自分の名前からいつでも変えられます。</p>
+      <div class="note">今日からの新規QRは、このシステムで発行してください。旧サイト（happymedia・qrqrq）で作って配布済みのQRは、そのまま使えます。</div>
+    </section>
+
+    <section id="new">
+      <h2><span class="no">02</span>QRを発行する</h2>
+      <div class="card steps">
+        <div class="step"><b class="n"></b><div><div class="t">左メニューの「新規登録」を開く</div><div class="d">右上の「＋ 新規QR」からも開けます。</div></div></div>
+        <div class="step"><b class="n"></b><div><div class="t">名称を入れる（下の形がおすすめ）</div><div class="d">号と版、クライアント名を順に書くと、集計開始日・エントリーシートのクライアント名と部数が自動で入ります。</div>
+          <div class="name"><span>2612</span>一宮版_<span>クライアント名</span>_メモ</div>
+          <div class="d">2612 は 2026年12月号。版は 一宮・江南・岩倉・清須・津島・西北 のどれか。</div></div></div>
+        <div class="step"><b class="n"></b><div><div class="t">QRバトル集計開始日を確認する</div><div class="d">名称から配布開始日が自動で入ります（青い説明が出ます）。違うときだけ日付を直してください。QRバトルに出さないQRは空欄でかまいません。</div></div></div>
+        <div class="step"><b class="n"></b><div><div class="t">エントリー部門とジャンルを選ぶ</div>
+          <div class="tags"><span class="tag">表紙巻頭部門</span><span class="tag">グルメ部門</span><span class="tag">ビューティー部門</span><span class="tag">ヘルス部門</span><span class="tag">スクール部門</span><span class="tag">ハウジング部門</span><span class="tag">その他部門</span><span class="tag">求人部門</span></div>
+          <div class="d">部門はQRバトル用、ジャンルは一覧の整理用です。</div></div></div>
+        <div class="step"><b class="n"></b><div><div class="t">飛び先URLを入れて「QRを発行する」</div><div class="d">http:// か https:// から入力します。</div></div></div>
+        <div class="step"><b class="n"></b><div><div class="t">JPEGをダウンロードして入稿</div><div class="d">600／1200／2400px から選べます。入稿用は 1200px 以上がおすすめです。</div></div></div>
+      </div>
+      <h3>IDは自動で付きます</h3>
+      <p>発行すると <code>A000001</code> のようなIDが付きます。英字は担当者ごと、数字はその人の通し番号です。エントリーシートの「QRコードID」に使います。削除しても番号は再利用しません。</p>
+      <h3>飛び先はあとから変えられます</h3>
+      <p>QRに入っているURLは固定で、飛び先だけを変えます。印刷済みのQRもそのまま新しい飛び先に移動するので、刷り直しは不要です。</p>
+    </section>
+
+    <section id="battle">
+      <h2><span class="no">03</span>QRバトル</h2>
+      <p>各QRは「集計開始日から1か月間」の読み取り回数で競います。集計開始日は、その号の配布開始日です。名称に号と版が入っていれば、下の予定表から自動で入ります。</p>
+      <div class="tbl">
+        <table>
+          <thead><tr><th>版</th><th>2026年12月号</th><th>2027年1月号</th><th>2027年2月号</th><th>部数</th></tr></thead>
+          <tbody>
+            <tr><td>一宮版</td><td>11/19</td><td>12/19</td><td>1/19</td><td class="num">208,900</td></tr>
+            <tr><td>江南版</td><td>11/30</td><td>12/27</td><td>1/31</td><td class="num">60,600</td></tr>
+            <tr><td>岩倉版</td><td>11/30</td><td>12/27</td><td>1/31</td><td class="num">58,250</td></tr>
+            <tr><td>清須版</td><td>11/30</td><td>12/27</td><td>1/31</td><td class="num">66,400</td></tr>
+            <tr><td>津島版</td><td>11/28</td><td>12/25</td><td>1/28</td><td class="num">59,900</td></tr>
+            <tr><td>西北版</td><td>12/2</td><td>1/2</td><td>2/2</td><td class="num">67,200</td></tr>
+          </tbody>
+        </table>
+      </div>
+      <p style="margin-top:10px">予定表に無い号は、一宮版は前月19日、江南・岩倉・清須版は前月末、津島版は前月28日、西北版は当月2日として推定し、画面に「推定」と表示します。配布開始がずれたときは日付を直してください。</p>
+    </section>
+
+    <section id="list">
+      <h2><span class="no">04</span>一覧と詳細</h2>
+      <ul>
+        <li>「QR一覧」には全員のQRが並びます。左のフォルダで人ごとに、上の検索でID・名称・URL・ジャンル・部門・作成者で絞り込めます。</li>
+        <li>上のカードに登録QR数、直近30日と累計の読み取り回数が出ます。フォルダを選ぶとその人の数字になります。</li>
+        <li>行をクリックすると詳細が開きます。日別のグラフ（7D／30D／90D／1Y）、QRの中身と飛び先、JPEGダウンロードがあります。</li>
+        <li>名称・部門・集計開始日・ジャンル・飛び先の変更と削除ができるのは、作成者本人と管理者だけです。他の人のQRは閲覧のみです。</li>
+        <li>削除するとゴミ箱に入り、そのQRを読み取るとケイクリエイトのサイトへ移動します。管理者は元に戻せます。</li>
+      </ul>
+    </section>
+
+    <section id="rank">
+      <h2><span class="no">05</span>ランキングとExcel出力</h2>
+      <h3>QRバトルのランキング</h3>
+      <p>「ランキング」で <b>QRバトル 2026年12月（集計最終日 12/1〜12/31）</b> のように月を選びます。集計最終日がその月に入るQRが、開始日から1か月間の読み取り回数順に並びます。部門・ジャンルで絞り込めます。期間がまだ終わっていないQRには「集計中 n日目」、まだ始まっていないQRには「開始前」と出ます。</p>
+      <h3>エントリーシートの出力</h3>
+      <p>同じ画面の「Excel出力」で、提出用エントリーシートの形（NO.・原稿ID・QRコードID・エントリー部門・クライアント名・媒体種・部数・個数・開始日・終了日）を書き出します。</p>
+      <ul>
+        <li>クライアント名と部数は名称から入ります。名称に版名があれば媒体種は「自社紙媒体」、無ければ「他社紙媒体」で部数は空欄です。</li>
+        <li>原稿IDだけは手で記入してください。</li>
+        <li>部門で絞ってから出力すると、部門別のシートになります。</li>
+      </ul>
+      <h3>そのほかの期間</h3>
+      <p>同じ選択肢から「直近30日」や月別のランキングにも切り替えられます。</p>
+    </section>
+
+    <section id="faq">
+      <h2><span class="no">06</span>よくある質問</h2>
+      <dl class="faq">
+        <dt>開いても「ログイン情報が取得できません」と出る</dt><dd>個人の Google アカウントで開いています。会社のアカウントに切り替えてから開き直してください。</dd>
+        <dt>読み取り回数が「−」になっている</dt><dd>読み取り記録サーバーに一時的につながらないときの表示です。少し待ってページを読み込み直してください。QRの転送自体は動いています。</dd>
+        <dt>自分で読み取って試したら回数に入る？</dt><dd>入ります。人がスマホで読み取った回数を数えます。LINE などのリンクプレビュー取得は数えません。</dd>
+        <dt>集計開始日を入れ忘れた</dt><dd>一覧から詳細を開き、集計開始日を入れて保存してください。名称に号と版があれば候補が入った状態で開きます。</dd>
+        <dt>他の人のQRを直したい</dt><dd>作成者本人か管理者に依頼してください。</dd>
+      </dl>
+    </section>
+
+    <p class="foot">不明点・改善の要望は平山まで。このガイドは 2026年10月26日時点の画面にもとづいています。</p>
+  </main>
+</div>
+
+</body>
+</html>
