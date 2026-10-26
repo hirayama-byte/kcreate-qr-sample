@@ -1340,7 +1340,8 @@ function renderBattleHint(hintEl, sug, dateEl) {
 // 名称を打つと日付が自動で入る。手で直した日付は名称を変えても上書きしない
 function bindBattle(nameEl, dateEl, hintEl, current) {
   var sug = battleSuggest(nameEl.value);
-  dateEl.value = current || '';
+  // 保存済みの日付があればそれを。無ければ名称からの候補を入れておく（保存するまで記録されない）
+  dateEl.value = current || (sug ? sug.date : '');
   dateEl.dataset.manual = current && !(sug && sug.date === current) ? '1' : '';
   nameEl.addEventListener('input', function () {
     var s = battleSuggest(nameEl.value);
