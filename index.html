@@ -298,6 +298,17 @@
             <div class="card-b preview" id="made"><div class="ph">ここに表示されます</div></div>
           </div>
         </div>
+        <!-- 一括取り込み（管理者のみ） -->
+        <div class="card hide" id="importCard" style="margin-top:16px">
+          <div class="card-h"><h2>一括取り込み（管理者）</h2></div>
+          <div class="card-b">
+            <p class="note" style="margin:0 0 10px">1行に <b>名称</b> と <b>飛び先URL</b> を、タブ・カンマ・空白のどれかで区切って貼り付けてください。ジャンルは「その他」、QRバトルはエントリーなしで登録されます（あとから詳細で直せます）。同じ名称＋同じURLがすでにある行は飛ばします。</p>
+            <textarea id="impText" rows="8" style="width:100%;font-family:var(--mono);font-size:12.5px" placeholder="2612一宮版_○○様_HP&#9;https://example.jp/"></textarea>
+            <div style="display:flex;gap:8px;align-items:center;margin-top:10px"><button class="btn primary" id="impRun">取り込む</button><span class="muted" id="impCount" style="font-size:12.5px"></span></div>
+            <div class="err" id="impErr"></div>
+            <div id="impResult" style="font-size:13px"></div>
+          </div>
+        </div>
       </section>
 
       <!-- ランキング -->
@@ -938,6 +949,44 @@ function getBattleRanking(ym, limit) {
   return { ym: ym, list: list, entrants: items.length, notStarted: items.length - started.length, noDate: all.length - withDate.length };
 }
 
+// ---------- 一括取り込み（管理者のみ） ----------
+// items: [{name, url}] 名称と飛び先だけで登録する（ジャンルは「その他」・QRバトルはエントリーなし。あとから直す）
+// 同じ名称＋同じURLのQRがすでにある（ゴミ箱以外）ものは飛ばす。Worker にはまとめて登録してからシートに書く
+function importQrs(items) {
+  var email = myEmail_();
+  if (!isAdmin_(email)) throw new Error('一括取り込みは管理者だけが使えます');
+  if (!Array.isArray(items) || !items.length) throw new Error('取り込む行がありません');
+  if (items.length > 500) throw new Error('一度に取り込めるのは500件までです');
+  var genre = genres_().indexOf('その他') >= 0 ? 'その他' : genres_()[0];
+  var name = memberMap_()[email] || email;
+  var lock = LockService.getScriptLock();
+  lock.waitLock(20000);
+  try {
+    var existing = {}, used = {};
+    rows_('qr').forEach(function (r) { used[String(r[0])] = true; if (!r[8]) existing[String(r[1]) + '\n' + String(r[3])] = true; });
+    var prefix = prefixFor_(email), seq = +nextQid_(prefix).slice(prefix.length) - 1;
+    var rows = [], skipped = [], errors = [], t = now_();
+    items.forEach(function (it, i) {
+      var nm = String(it.name || '').trim(), u = String(it.url || '').trim();
+      try {
+        if (!nm) throw new Error('名称がありません');
+        u = checkUrl_(u);
+        if (existing[nm + '\n' + u]) { skipped.push({ line: i + 1, name: nm }); return; }
+        var code = newCode_(used); used[code] = true;
+        seq++;
+        rows.push([code, nm, genre, u, email, name, t, t, '', '', '', fmtQid_(prefix, seq), '']);
+        existing[nm + '\n' + u] = true;
+      } catch (e) { errors.push({ line: i + 1, name: nm || u, error: e.message }); }
+    });
+    if (rows.length) {
+      for (var k = 0; k < rows.length; k += 200) worker_('post', '/api/links', rows.slice(k, k + 200).map(function (r) { return { code: r[0], url: r[3], deleted: false }; }));
+      var sh = sheet_('qr');
+      sh.getRange(sh.getLastRow() + 1, 1, rows.length, QR_HEAD.length).setValues(rows);
+    }
+    return { created: rows.map(function (r) { return { qid: r[11], code: r[0], name: r[1], url: r[3] }; }), skipped: skipped, errors: errors };
+  } finally { lock.releaseLock(); }
+}
+
 // Worker の管理用トークン（worker 側の API_TOKEN と同じ値）。このファイルは共有しない
 var WORKER_TOKEN = 'test-token';
 </script>
@@ -1106,6 +1155,7 @@ call('init').then(function (r) {
   });
   S.divisions = r.divisions || [];
   if (r.guideUrl) $('guideBtn').href = r.guideUrl; // サンプル版では guide.html のまま
+  $('importCard').classList.toggle('hide', !S.me.isAdmin);
   ['nDivision', 'rDiv', 'qDiv'].forEach(function (id) {
     S.divisions.forEach(function (g) { var o = document.createElement('option'); o.value = o.textContent = g; $(id).appendChild(o); });
   });
@@ -1406,6 +1456,31 @@ $('nSave').onclick = function () {
       $('nName').value = ''; $('nUrl').value = ''; $('nGenre').value = ''; $('nDivision').value = ''; resetBattle($('nBattle'), $('nBattleHint'));
       toast('QRを発行しました');
     }).catch(function (e) { $('nErr').textContent = e.message; })
+    .then(function () { b.disabled = false; });
+};
+
+// ---------- 一括取り込み ----------
+function parseImport(text) {
+  return String(text || '').split(/\r?\n/).map(function (l) { return l.trim(); }).filter(Boolean).map(function (l) {
+    var m = /^(.*?)[\t,、 　]+(https?:\/\/\S+)\s*$/.exec(l);
+    return m ? { name: m[1].trim(), url: m[2] } : { name: l, url: '' };
+  });
+}
+$('impText').addEventListener('input', function () { var n = parseImport($('impText').value).length; $('impCount').textContent = n ? n + ' 行' : ''; });
+$('impRun').onclick = function () {
+  var items = parseImport($('impText').value);
+  $('impErr').textContent = ''; $('impResult').innerHTML = '';
+  if (!items.length) { $('impErr').textContent = '取り込む行がありません'; return; }
+  var b = this; b.disabled = true; $('impCount').textContent = items.length + ' 行を取り込み中…';
+  call('importQrs', items).then(function (r) {
+    $('impCount').textContent = '';
+    $('impResult').innerHTML =
+      '<p style="margin:8px 0 4px"><b>' + r.created.length + ' 件を登録</b>' + (r.skipped.length ? '／' + r.skipped.length + ' 件は同じ名称＋URLがあるため飛ばしました' : '') + (r.errors.length ? '／<span class="err" style="margin:0">' + r.errors.length + ' 件はエラー</span>' : '') + '</p>' +
+      (r.errors.length ? '<ul style="margin:4px 0;padding-left:18px">' + r.errors.map(function (e) { return '<li>' + e.line + '行目「' + esc(e.name) + '」: ' + esc(e.error) + '</li>'; }).join('') + '</ul>' : '') +
+      (r.created.length ? '<div class="tbl" style="margin-top:8px;max-height:260px;overflow:auto"><table><thead><tr><th>ID</th><th>名称</th><th>飛び先</th></tr></thead><tbody>' +
+        r.created.map(function (q) { return '<tr><td><span class="code">' + esc(q.qid) + '</span></td><td>' + esc(q.name) + '</td><td class="url" style="font-size:12px">' + esc(q.url) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '');
+    if (r.created.length) { $('impText').value = ''; toast(r.created.length + ' 件を登録しました'); }
+  }).catch(function (e) { $('impErr').textContent = e.message; $('impCount').textContent = ''; })
     .then(function () { b.disabled = false; });
 };
 
