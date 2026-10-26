@@ -250,6 +250,7 @@
               <input type="text" id="q" placeholder="ID・名称・URL・ジャンル・部門・作成者で検索">
             </div>
             <select id="qGenre"><option value="">ジャンル：すべて</option></select>
+            <select id="qDiv"><option value="">部門：すべて</option></select>
             <span class="count" id="count"></span>
           </div>
           <div class="tbl">
@@ -258,6 +259,7 @@
                 <th data-sort="qid" class="hide-sm">ID</th>
                 <th data-sort="name">名称</th>
                 <th data-sort="genre">ジャンル</th>
+                <th data-sort="division">部門</th>
                 <th data-sort="ownerName" class="hide-sm">作成者</th>
                 <th data-sort="created" class="hide-sm">作成日</th>
                 <th data-sort="battleStart" class="hide-sm">計測開始</th>
@@ -1028,6 +1030,7 @@ function tag(g) {
   var c = GENRE_COLORS[Math.max(0, S.genres.indexOf(g)) % GENRE_COLORS.length];
   return '<span class="tag" style="--tb:' + c[0] + ';--tc:' + c[1] + '">' + esc(g) + '</span>';
 }
+function divTag(d) { return d ? '<span class="div">' + esc(d) + '</span>' : '<span class="muted">−</span>'; }
 function who(name) { return '<span class="who"><span class="avatar">' + initial(name) + '</span>' + esc(name) + '</span>'; }
 function meter(n, max) {
   return '<div class="meter"><span class="num">' + fmt(n) + '</span><span class="track"><span class="fill" style="width:' + (max && n ? Math.round(n / max * 100) : 0) + '%"></span></span></div>';
@@ -1084,7 +1087,7 @@ call('init').then(function (r) {
     S.genres.forEach(function (g) { var o = document.createElement('option'); o.value = o.textContent = g; $(id).appendChild(o); });
   });
   S.divisions = r.divisions || [];
-  ['nDivision', 'rDiv'].forEach(function (id) {
+  ['nDivision', 'rDiv', 'qDiv'].forEach(function (id) {
     S.divisions.forEach(function (g) { var o = document.createElement('option'); o.value = o.textContent = g; $(id).appendChild(o); });
   });
   buildPeriods();
@@ -1131,13 +1134,13 @@ function showTab(tab) {
 
 // ---------- 一覧 ----------
 function loadList() {
-  $('rows').innerHTML = '<tr><td colspan="8" class="loading">読み込み中…</td></tr>';
+  $('rows').innerHTML = '<tr><td colspan="9" class="loading">読み込み中…</td></tr>';
   return call('listQr').then(function (list) {
     S.list = list;
     $('countWarn').classList.toggle('hide', !list.some(function (q) { return q.last30 == null; }));
     renderFolders(); renderList();
   })
-    .catch(function (e) { $('rows').innerHTML = '<tr><td colspan="8" class="err">' + esc(e.message) + '</td></tr>'; });
+    .catch(function (e) { $('rows').innerHTML = '<tr><td colspan="9" class="err">' + esc(e.message) + '</td></tr>'; });
 }
 function renderFolders() {
   var by = {};
@@ -1155,7 +1158,7 @@ $('folders').onclick = function (e) {
   if ($('list').classList.contains('hide')) { showTab('list'); return; }
   renderFolders(); renderList();
 };
-['q', 'qField', 'qGenre'].forEach(function (id) { $(id).addEventListener('input', renderList); });
+['q', 'qField', 'qGenre', 'qDiv'].forEach(function (id) { $(id).addEventListener('input', renderList); });
 document.querySelector('#list thead').onclick = function (e) {
   var th = e.target.closest('th'); if (!th) return;
   var k = th.dataset.sort;
@@ -1164,9 +1167,10 @@ document.querySelector('#list thead').onclick = function (e) {
 };
 function inFolder() { return S.list.filter(function (q) { return S.folder === 'all' || q.ownerEmail === S.folder; }); }
 function filtered() {
-  var kw = $('q').value.trim().toLowerCase(), f = $('qField').value, g = $('qGenre').value;
+  var kw = $('q').value.trim().toLowerCase(), f = $('qField').value, g = $('qGenre').value, dv = $('qDiv').value;
   return inFolder().filter(function (q) {
     if (g && q.genre !== g) return false;
+    if (dv && q.division !== dv) return false;
     if (!kw) return true;
     var hay = f === 'name' ? q.name : f === 'url' ? q.url : [q.name, q.url, q.genre, q.ownerName, q.code, q.qid, q.division].join(' ');
     return hay.toLowerCase().indexOf(kw) >= 0;
@@ -1193,10 +1197,10 @@ function renderList() {
   $('rows').innerHTML = list.length ? list.map(function (q) {
     return '<tr class="row" data-c="' + esc(q.code) + '"><td class="hide-sm"><span class="code">' + esc(q.qid || '−') + '</span></td>' +
       '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
-      '<td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
+      '<td>' + tag(q.genre) + '</td><td>' + divTag(q.division) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
       '<td class="date hide-sm">' + (q.battleStart ? esc(q.battleStart) : '<span class="muted">−</span>') + '</td>' +
       '<td class="num">' + meter(q.last30, max) + '</td><td class="num">' + fmt(q.total) + '</td></tr>';
-  }).join('') : '<tr><td colspan="8" class="loading">該当するQRはありません</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="loading">該当するQRはありません</td></tr>';
 }
 $('rows').onclick = function (e) {
   var tr = e.target.closest('tr.row'); if (!tr) return;
@@ -1409,7 +1413,7 @@ $('rPeriod').onchange = loadRank; $('rGenre').onchange = function () { renderRan
 function loadRank() {
   var v = $('rPeriod').value, t = new Date();
   $('crumb').textContent = '/ ' + $('rPeriod').selectedOptions[0].textContent;
-  $('rRows').innerHTML = '<tr><td colspan="9" class="loading">集計中…</td></tr>';
+  $('rRows').innerHTML = '<tr><td colspan="10" class="loading">集計中…</td></tr>';
   $('rInfo').textContent = '';
   var battle = /^battle:(\d{4}-\d{2})$/.exec(v);
   S.rankMode = battle ? 'battle' : 'period';
@@ -1432,9 +1436,8 @@ function rankFiltered() {
 }
 function renderRank() {
   var battle = S.rankMode === 'battle', meta = S.rankMeta;
-  $('rHead').innerHTML = '<th>順位</th><th>ID</th><th>名称</th>' +
-    (battle ? '<th>部門</th><th class="hide-sm">作成者</th><th class="hide-sm">集計期間</th><th class="num">期間の読み取り</th><th class="num hide-sm">累計</th>'
-            : '<th>ジャンル</th><th class="hide-sm">作成者</th><th class="num">読み取り</th>');
+  $('rHead').innerHTML = '<th>順位</th><th>ID</th><th>名称</th><th>ジャンル</th><th>部門</th><th class="hide-sm">作成者</th>' +
+    (battle ? '<th class="hide-sm">集計期間</th><th class="num">期間の読み取り</th><th class="num hide-sm">累計</th>' : '<th class="num">読み取り</th>');
   var all = rankFiltered(), r = all.slice(0, battle ? 100 : 30);
   var max = r.length ? r[0].count : 0;
   if (battle && meta) {
@@ -1447,11 +1450,11 @@ function renderRank() {
     return '<tr class="row' + (q.count ? '' : ' zero') + '" data-c="' + esc(q.code) + '"><td><span class="medal' + (i < 3 && q.count ? ' m' + (i + 1) : '') + '">' + (i + 1) + '</span></td>' +
       '<td><span class="code">' + esc(q.qid || '−') + '</span></td>' +
       '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
+      '<td>' + tag(q.genre) + '</td><td>' + divTag(q.division) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td>' +
       (battle
-        ? '<td>' + (q.division ? '<span class="div">' + esc(q.division) + '</span>' : '<span class="muted">−</span>') + '</td><td class="hide-sm">' + who(q.ownerName) + '</td>' +
-          '<td class="date hide-sm">' + esc(mdLabel(q.from)) + '〜' + esc(mdLabel(q.to)) + (q.notStarted ? ' <span class="live">開始前</span>' : q.done ? '' : ' <span class="live">集計中 ' + q.day + '日目</span>') + '</td>' +
+        ? '<td class="date hide-sm">' + esc(mdLabel(q.from)) + '〜' + esc(mdLabel(q.to)) + (q.notStarted ? ' <span class="live">開始前</span>' : q.done ? '' : ' <span class="live">集計中 ' + q.day + '日目</span>') + '</td>' +
           '<td class="num">' + meter(q.count, max) + '</td><td class="num hide-sm">' + fmt(q.total) + '</td>'
-        : '<td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="num">' + meter(q.count, max) + '</td>') + '</tr>';
+        : '<td class="num">' + meter(q.count, max) + '</td>') + '</tr>';
   }).join('') : '<tr><td colspan="9" class="loading">' + (battle ? '集計最終日がこの月に入るQRはありません（集計開始日が入っているQRが対象です）' : 'この期間の読み取りはまだありません') + '</td></tr>';
 }
 // エントリーシート（提出用）の形で Excel に書き出す。列は提出シートの表示部分（NO.〜終了日）だけ。原稿IDは空欄（あとで記入）。クライアント名は名称の「版_」の次の部分
