@@ -1437,19 +1437,18 @@ function renderRank() {
         : '<td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="num">' + meter(q.count, max) + '</td>') + '</tr>';
   }).join('') : '<tr><td colspan="9" class="loading">' + (battle ? 'QRバトル集計開始日が入っていて、この期間に入っているQRはまだありません' : 'この期間の読み取りはまだありません') + '</td></tr>';
 }
-// エントリーシート（提出用）の形で Excel に書き出す。クライアント名・原稿IDは空欄（あとで記入）
+// エントリーシート（提出用）の形で Excel に書き出す。列は提出シートの表示部分（NO.〜終了日）だけ。原稿ID・クライアント名は空欄（あとで記入）
 function slashDate(s) { return s ? s.slice(0, 4) + '/' + (+s.slice(5, 7)) + '/' + (+s.slice(8, 10)) : ''; }
 function circulationOf(name) { var ed = battleSuggest(name); return ed ? (ed.edition === '一宮' ? 200000 : 60000) : ''; }
 function exportBattleXlsx() {
   var meta = S.rankMeta, rows = rankFiltered();
   if (!meta || !rows.length) { toast('書き出すQRがありません'); return; }
-  var head = ['NO.', '原稿ID', 'QRコードID', 'エントリー部門', 'クライアント名', '媒体種', '部数・個数', 'QR計測期間 開始日', 'QR計測期間 終了日', '期間の読み取り回数', '累計読み取り回数', '集計状況', 'QR名称', '作成者', '飛び先URL'];
-  var aoa = [head].concat(rows.map(function (q, i) {
-    return [i + 1, '', q.qid || '', q.division || '', '', '自社紙媒体', circulationOf(q.name), slashDate(q.from), slashDate(q.to), q.count, q.total,
-      q.done ? '集計済み' : '集計中（' + q.day + '日目）', q.name, q.ownerName, q.url];
+  var head = ['NO.', '原稿ID', 'QRコードID', 'エントリー部門', 'クライアント名', '媒体種', '部数・個数', 'QR計測期間(31日間以内) 開始日', '終了日'];
+  var aoa = [['【全員対象】QR部門　エントリーシート'], head].concat(rows.map(function (q, i) {
+    return [i + 1, '', q.qid || '', q.division || '', '', '自社紙媒体', circulationOf(q.name), slashDate(q.from), slashDate(q.to)];
   }));
   var ws = XLSX.utils.aoa_to_sheet(aoa);
-  ws['!cols'] = [4, 10, 12, 16, 22, 12, 12, 14, 14, 14, 14, 14, 40, 10, 40].map(function (w) { return { wch: w }; });
+  ws['!cols'] = [5, 10, 12, 16, 22, 12, 12, 26, 12].map(function (w) { return { wch: w }; });
   var wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'QR部門エントリー');
   var d = $('rDiv').value;
