@@ -523,7 +523,7 @@
 <script>
 var __u = new URLSearchParams(location.search).get("user") || "hirayama@k-create.co.jp";
 var __env = GasMock.makeEnv({}, { user: __u, owner: "hirayama@k-create.co.jp" });
-["SpreadsheetApp","PropertiesService","Session","Utilities","LockService","ContentService","Logger","UrlFetchApp"].forEach(function (k) { window[k] = __env[k]; });
+["SpreadsheetApp","PropertiesService","Session","Utilities","LockService","ContentService","Logger","UrlFetchApp","ScriptApp"].forEach(function (k) { window[k] = __env[k]; });
 window.HtmlService = {};
 </script>
 <script>// QRコード管理 — 管理画面（社内のみ公開）
