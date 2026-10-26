@@ -161,6 +161,9 @@
   .live { background: #ecfeff; color: #0e7490; border-radius: 4px; padding: 1px 6px; font-size: 11px; white-space: nowrap; }
   .div { display: inline-block; background: #fef3c7; color: #92400e; border-radius: 4px; padding: 1px 7px; font-size: 11.5px; white-space: nowrap; }
   .zero { color: var(--faint); }
+  select.inl { height: 26px; font-size: 12px; padding: 0 4px; max-width: 150px; border-radius: 6px; }
+  select.inl.div { background: #fef3c7; color: #92400e; border-color: #fde68a; }
+  select.inl.none { color: var(--muted); }
 
   /* ランキング */
   .rank td:first-child { width: 56px; }
@@ -304,7 +307,7 @@
           <div class="card-b">
             <p class="note" style="margin:0 0 10px">1行に <b>名称</b> と <b>飛び先URL</b> を、タブ・カンマ・空白のどれかで区切って貼り付けてください。ジャンルは「その他」、QRバトルはエントリーなしで登録されます（あとから詳細で直せます）。同じ名称＋同じURLがすでにある行は飛ばします。</p>
             <textarea id="impText" rows="8" style="width:100%;font-family:var(--mono);font-size:12.5px" placeholder="2612一宮版_○○様_HP&#9;https://example.jp/"></textarea>
-            <div style="display:flex;gap:8px;align-items:center;margin-top:10px"><button class="btn primary" id="impRun">取り込む</button><span class="muted" id="impCount" style="font-size:12.5px"></span></div>
+            <div style="display:flex;gap:10px;align-items:center;margin-top:10px;flex-wrap:wrap"><label for="impOwner" style="font-size:12.5px;color:var(--muted)">登録する担当者</label><select id="impOwner"></select><button class="btn primary" id="impRun">取り込む</button><span class="muted" id="impCount" style="font-size:12.5px"></span></div>
             <div class="err" id="impErr"></div>
             <div id="impResult" style="font-size:13px"></div>
           </div>
@@ -650,6 +653,18 @@ function memberMap_() {
 }
 
 function genres_() { return rows_('genres').map(function (r) { return String(r[0]); }).filter(String); }
+// 名前が登録されているメンバー（担当者の選択肢）
+function membersList_() {
+  return rows_('members').filter(function (r) { return String(r[0]) && String(r[1]); })
+    .map(function (r) { return { email: String(r[0]).toLowerCase(), name: String(r[1]), prefix: String(r[2] || '') }; })
+    .sort(function (a, b) { return a.name.localeCompare(b.name, 'ja'); });
+}
+function checkMember_(email) {
+  email = String(email || '').trim().toLowerCase();
+  var m = memberMap_();
+  if (!m[email]) throw new Error('担当者はメンバー一覧（名前を登録した人）から選んでください');
+  return { email: email, name: m[email] };
+}
 function divisions_() { return rows_('divisions').map(function (r) { return String(r[0]); }).filter(String); }
 function ownerEmail_() { var r = rows_('admins')[0]; return r ? String(r[0]).toLowerCase() : ''; }
 
@@ -778,6 +793,7 @@ function init() {
     genres: genres_(),
     divisions: divisions_(),
     guideUrl: guideUrl_(),
+    members: isAdmin_(email) ? membersList_() : [],
     baseUrl: setting_('base_url') || BASE_URL,
     fallbackUrl: setting_('fallback_url') || 'https://www.k-create.co.jp/'
   };
@@ -854,10 +870,35 @@ function updateQr(code, f) {
   var q = qrObj_(sh.getRange(row, 1, 1, QR_HEAD.length).getValues()[0]);
   if (!canEdit_(q, myEmail_())) throw new Error('このQRを変更できるのは作成者（' + q.ownerName + '）と管理者だけです');
   if (v.url !== q.url) putLink_(code, v.url, !!q.deleted);
+  if (f.ownerEmail !== undefined && String(f.ownerEmail).toLowerCase() !== q.ownerEmail) {
+    if (!isAdmin_(myEmail_())) throw new Error('担当者を変えられるのは管理者だけです');
+    var o = checkMember_(f.ownerEmail);
+    sh.getRange(row, 5, 1, 2).setValues([[o.email, o.name]]); // IDはそのまま（発行時の担当者の英字が残る）
+  }
   sh.getRange(row, 2, 1, 3).setValues([[v.name, v.genre, v.url]]);
   sh.getRange(row, 8).setValue(now_());
   sh.getRange(row, 11).setValue(v.battleStart);
   sh.getRange(row, 13).setValue(v.division);
+  return true;
+}
+
+// 一覧のプルダウンから。ジャンルと部門だけを変える（作成者本人と管理者）
+function updateQrFields(code, f) {
+  var sh = sheet_('qr');
+  var row = findQrRow_(code);
+  var q = qrObj_(sh.getRange(row, 1, 1, QR_HEAD.length).getValues()[0]);
+  if (!canEdit_(q, myEmail_())) throw new Error('このQRを変更できるのは作成者（' + q.ownerName + '）と管理者だけです');
+  f = f || {};
+  if (f.genre !== undefined) {
+    if (genres_().indexOf(f.genre) < 0) throw new Error('ジャンルを選んでください');
+    sh.getRange(row, 3).setValue(f.genre);
+  }
+  if (f.division !== undefined) {
+    var dv = String(f.division || '').trim();
+    if (dv && divisions_().indexOf(dv) < 0) throw new Error('エントリー部門は一覧から選んでください');
+    sh.getRange(row, 13).setValue(dv);
+  }
+  sh.getRange(row, 8).setValue(now_());
   return true;
 }
 
@@ -952,13 +993,15 @@ function getBattleRanking(ym, limit) {
 // ---------- 一括取り込み（管理者のみ） ----------
 // items: [{name, url}] 名称と飛び先だけで登録する（ジャンルは「その他」・QRバトルはエントリーなし。あとから直す）
 // 同じ名称＋同じURLのQRがすでにある（ゴミ箱以外）ものは飛ばす。Worker にはまとめて登録してからシートに書く
-function importQrs(items) {
-  var email = myEmail_();
-  if (!isAdmin_(email)) throw new Error('一括取り込みは管理者だけが使えます');
+// ownerEmail を渡すと、そのメンバーの名義（担当者・IDの英字）で登録する（管理者の代理取り込み）
+function importQrs(items, ownerEmail) {
+  var me = myEmail_();
+  if (!isAdmin_(me)) throw new Error('一括取り込みは管理者だけが使えます');
   if (!Array.isArray(items) || !items.length) throw new Error('取り込む行がありません');
   if (items.length > 500) throw new Error('一度に取り込めるのは500件までです');
   var genre = genres_().indexOf('その他') >= 0 ? 'その他' : genres_()[0];
-  var name = memberMap_()[email] || email;
+  var email = me, name = memberMap_()[me] || me;
+  if (ownerEmail && String(ownerEmail).toLowerCase() !== me) { var o = checkMember_(ownerEmail); email = o.email; name = o.name; }
   var lock = LockService.getScriptLock();
   lock.waitLock(20000);
   try {
@@ -1156,6 +1199,9 @@ call('init').then(function (r) {
   S.divisions = r.divisions || [];
   if (r.guideUrl) $('guideBtn').href = r.guideUrl; // サンプル版では guide.html のまま
   $('importCard').classList.toggle('hide', !S.me.isAdmin);
+  S.members = r.members || [];
+  $('impOwner').innerHTML = '<option value="">自分（' + esc(S.me.name || S.me.email) + '）</option>' +
+    S.members.filter(function (m) { return m.email !== S.me.email; }).map(function (m) { return '<option value="' + esc(m.email) + '">' + esc(m.name) + '</option>'; }).join('');
   ['nDivision', 'rDiv', 'qDiv'].forEach(function (id) {
     S.divisions.forEach(function (g) { var o = document.createElement('option'); o.value = o.textContent = g; $(id).appendChild(o); });
   });
@@ -1266,18 +1312,40 @@ function renderList() {
   $('rows').innerHTML = list.length ? list.map(function (q) {
     return '<tr class="row" data-c="' + esc(q.code) + '"><td class="hide-sm"><span class="code">' + esc(q.qid || '−') + '</span></td>' +
       '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
-      '<td>' + tag(q.genre) + '</td><td>' + divTag(q.division) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
+      '<td>' + (canEdit(q) ? inlineSel(q, 'genre') : tag(q.genre)) + '</td><td>' + (canEdit(q) ? inlineSel(q, 'division') : divTag(q.division)) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
       '<td class="date hide-sm">' + (q.battleStart ? esc(q.battleStart) : '<span class="muted">−</span>') + '</td>' +
       '<td class="num">' + meter(q.last30, max) + '</td><td class="num">' + fmt(q.total) + '</td></tr>';
   }).join('') : '<tr><td colspan="9" class="loading">該当するQRはありません</td></tr>';
 }
 $('rows').onclick = function (e) {
+  if (e.target.closest('select.inl')) return; // プルダウンの操作では詳細を開かない
   var tr = e.target.closest('tr.row'); if (!tr) return;
   openDetail(S.list.filter(function (q) { return q.code === tr.dataset.c; })[0]);
 };
+// 一覧のプルダウン（ジャンル・部門）。変えるとすぐ保存
+function inlineSel(q, field) {
+  var isDiv = field === 'division', cur = q[field] || '';
+  var opts = isDiv ? '<option value="">（なし）</option>' + divOptions(cur) : genreOptions(cur);
+  return '<select class="inl' + (isDiv ? ' div' : '') + (isDiv && !cur ? ' none' : '') + '" data-f="' + field + '" data-c="' + esc(q.code) + '" title="' + (isDiv ? 'エントリー部門を変更' : 'ジャンルを変更') + '">' + opts + '</select>';
+}
+$('rows').addEventListener('change', function (e) {
+  var sel = e.target.closest('select.inl'); if (!sel) return;
+  var q = S.list.filter(function (x) { return x.code === sel.dataset.c; })[0]; if (!q) return;
+  var field = sel.dataset.f, before = q[field] || '', val = sel.value, f = {}; f[field] = val;
+  sel.disabled = true;
+  call('updateQrFields', q.code, f).then(function () {
+    q[field] = val; toast((field === 'genre' ? 'ジャンル' : 'エントリー部門') + 'を「' + (val || 'なし') + '」に変更しました');
+    sel.classList.toggle('none', field === 'division' && !val);
+  }).catch(function (e) { sel.value = before; toast(e.message); }).then(function () { sel.disabled = false; });
+});
 
 // ---------- 詳細（グラフ・編集） ----------
 function genreOptions(sel) { return S.genres.map(function (g) { return '<option' + (g === sel ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join(''); }
+function ownerOptions(sel, selName) {
+  var list = S.members.slice();
+  if (!list.some(function (m) { return m.email === sel; })) list.unshift({ email: sel, name: selName || sel });
+  return list.map(function (m) { return '<option value="' + esc(m.email) + '"' + (m.email === sel ? ' selected' : '') + '>' + esc(m.name) + '</option>'; }).join('');
+}
 function divOptions(sel) { return S.divisions.map(function (g) { return '<option' + (g === sel ? ' selected' : '') + '>' + esc(g) + '</option>'; }).join(''); }
 function openDetail(q) {
   if (!q) return;
@@ -1305,6 +1373,7 @@ function openDetail(q) {
         '<label>名称</label><input type="text" id="eName" value="' + esc(q.name) + '">' +
         '<label>QRバトル集計開始日</label><div><input type="date" id="eBattle"><div class="hint" id="eBattleHint"></div></div>' +
         '<label>QRバトル エントリー部門</label><select id="eDivision"><option value="">（エントリーしない）</option>' + divOptions(q.division) + '</select>' +
+        (S.me.isAdmin ? '<label>担当者</label><div><select id="eOwner">' + ownerOptions(q.ownerEmail, q.ownerName) + '</select><div class="hint">担当を引き継ぐときに変えます。ID はそのままです。</div></div>' : '') +
         '<label>ジャンル</label><select id="eGenre">' + genreOptions(q.genre) + '</select>' +
         '<label>飛び先URL</label><input type="url" id="eUrl" value="' + esc(q.url) + '">' +
         '<span></span><div style="display:flex;gap:8px"><button class="btn primary" id="eSave">保存</button><span style="flex:1"></span><button class="btn danger" id="eDel">削除</button></div>' +
@@ -1328,7 +1397,9 @@ function openDetail(q) {
       var b = this; b.disabled = true; $('eErr').textContent = '';
       var url = $('eUrl').value.trim();
       if (url !== q.url && !confirm('飛び先URLを変更します。印刷済みのQRも新しい飛び先に移動します。よろしいですか？')) { b.disabled = false; return; }
-      call('updateQr', q.code, { name: $('eName').value, genre: $('eGenre').value, url: url, battleStart: $('eBattle').value, division: $('eDivision').value })
+      var payload = { name: $('eName').value, genre: $('eGenre').value, url: url, battleStart: $('eBattle').value, division: $('eDivision').value };
+      if (S.me.isAdmin && $('eOwner')) payload.ownerEmail = $('eOwner').value;
+      call('updateQr', q.code, payload)
         .then(function () { toast('保存しました'); closeModal(); loadList(); })
         .catch(function (e) { $('eErr').textContent = e.message; b.disabled = false; });
     };
@@ -1472,14 +1543,14 @@ $('impRun').onclick = function () {
   $('impErr').textContent = ''; $('impResult').innerHTML = '';
   if (!items.length) { $('impErr').textContent = '取り込む行がありません'; return; }
   var b = this; b.disabled = true; $('impCount').textContent = items.length + ' 行を取り込み中…';
-  call('importQrs', items).then(function (r) {
+  call('importQrs', items, $('impOwner').value).then(function (r) {
     $('impCount').textContent = '';
     $('impResult').innerHTML =
       '<p style="margin:8px 0 4px"><b>' + r.created.length + ' 件を登録</b>' + (r.skipped.length ? '／' + r.skipped.length + ' 件は同じ名称＋URLがあるため飛ばしました' : '') + (r.errors.length ? '／<span class="err" style="margin:0">' + r.errors.length + ' 件はエラー</span>' : '') + '</p>' +
       (r.errors.length ? '<ul style="margin:4px 0;padding-left:18px">' + r.errors.map(function (e) { return '<li>' + e.line + '行目「' + esc(e.name) + '」: ' + esc(e.error) + '</li>'; }).join('') + '</ul>' : '') +
       (r.created.length ? '<div class="tbl" style="margin-top:8px;max-height:260px;overflow:auto"><table><thead><tr><th>ID</th><th>名称</th><th>飛び先</th></tr></thead><tbody>' +
         r.created.map(function (q) { return '<tr><td><span class="code">' + esc(q.qid) + '</span></td><td>' + esc(q.name) + '</td><td class="url" style="font-size:12px">' + esc(q.url) + '</td></tr>'; }).join('') + '</tbody></table></div>' : '');
-    if (r.created.length) { $('impText').value = ''; toast(r.created.length + ' 件を登録しました'); }
+    if (r.created.length) { $('impText').value = ''; toast(r.created.length + ' 件を' + ($('impOwner').selectedOptions[0].textContent) + 'の名義で登録しました'); }
   }).catch(function (e) { $('impErr').textContent = e.message; $('impCount').textContent = ''; })
     .then(function () { b.disabled = false; });
 };
