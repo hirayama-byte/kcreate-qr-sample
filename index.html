@@ -1771,7 +1771,7 @@ $('rPdf').onclick = openSales;
 function openSales() {
   var g = $('rGenre').value;
   $('mBody').innerHTML =
-    '<div class="mhead"><h2>営業ツールPDF</h2><div class="meta">ジャンルの読み取り上位を、直近3か月（今月と前2か月）の月ごとのグラフつきで A4 縦1枚にまとめます。今月は今日までの集計です。チェックした最大 ' + SP_MAX + ' 件を出力します（順位は読み取り回数順）。</div></div>' +
+    '<div class="mhead"><h2>営業ツールPDF</h2><div class="meta">ジャンルの読み取り上位を、直近3か月（今月と前2か月）の週ごとのグラフ（各月4週×3か月＝12本）つきで A4 縦1枚にまとめます。今月は今日までの集計です。チェックした最大 ' + SP_MAX + ' 件を出力します（順位は読み取り回数順）。</div></div>' +
     '<div class="sales"><div class="sp-side">' +
       '<div class="form" style="grid-template-columns:76px 1fr;gap:10px">' +
         '<label for="spGenre">ジャンル</label><select id="spGenre"><option value=""' + (g ? '' : ' selected') + '>すべて</option>' + genreOptions(g) + '</select>' +
@@ -1822,18 +1822,20 @@ function salesTitle(q) {
   if (head) return { client: parts[1], sub: [head.label].concat(parts.slice(2)).join(' ／ ') };
   return { client: parts[0] || q.name, sub: parts.slice(1).join(' ／ ') };
 }
-// 期間を月ごとの合計にする [{ym, label, from, to, count}]。最後の月（今月）は今日までなので「10月（〜28日）」のように書く
-function salesMonths(d, q) {
-  var daily = q.daily || {}, by = {};
-  for (var i = 0; i < d.days; i++) { var k = addYmd(d.from, i); by[k.slice(0, 7)] = (by[k.slice(0, 7)] || 0) + (daily[k] || 0); }
-  var months = [], ym = d.from.slice(0, 7);
-  while (ym <= d.to.slice(0, 7)) {
+// 期間を「各月4週」に区切って週ごとの合計にする [{label, from, to, count, future}]
+// 週は 1〜7日＝1W／8〜14日＝2W／15〜21日＝3W／22日〜末日＝4W。ラベルは「9-1W」のように月-週。今日より後の週は future（数字なし・薄く）
+function salesWeeks(d, q) {
+  var daily = q.daily || {}, weeks = [], ym = d.from.slice(0, 7), toYm = d.to.slice(0, 7);
+  while (ym <= toYm) {
     var y = +ym.slice(0, 4), m = +ym.slice(5, 7), last = new Date(y, m, 0).getDate();
-    var from = ym + '-01', to = ym === d.to.slice(0, 7) ? d.to : ym + '-' + pad2(last), partial = to !== ym + '-' + pad2(last);
-    months.push({ ym: ym, label: m + '月' + (partial ? '（〜' + (+to.slice(8, 10)) + '日）' : ''), from: from, to: to, count: by[ym] || 0 });
+    [[1, 7], [8, 14], [15, 21], [22, last]].forEach(function (r, i) {
+      var from = ym + '-' + pad2(r[0]), to = ym + '-' + pad2(r[1]), c = 0;
+      for (var dd = r[0]; dd <= r[1]; dd++) { var k = ym + '-' + pad2(dd); if (k >= d.from && k <= d.to) c += daily[k] || 0; }
+      weeks.push({ label: m + '-' + (i + 1) + 'W', from: from, to: to, count: c, future: from > d.to });
+    });
     ym = m === 12 ? (y + 1) + '-01' : y + '-' + pad2(m + 1);
   }
-  return months;
+  return weeks;
 }
 function ymJa(s) { return s.slice(0, 4) + '年' + (+s.slice(5, 7)) + '月'; }
 function fitText(g, s, maxW) { s = String(s == null ? '' : s); if (g.measureText(s).width <= maxW) return s; while (s.length > 1 && g.measureText(s + '…').width > maxW) s = s.slice(0, -1); return s + '…'; }
@@ -1864,11 +1866,12 @@ function drawSalesReport(cv, d, codes) {
   items.forEach(function (q, i) { drawSalesCard(g, q, i + 1, x0 + (i % cols) * (cwid + gap), top + Math.floor(i / cols) * (ch + gap), cwid, ch, d); });
   // フッター
   g.textAlign = 'left'; g.font = spFont(7.5, 400); g.fillStyle = '#64748b';
-  g.fillText(fitText(g, '※ 読み取り回数＝QRコードが読み取られて飛び先のページへ移動した回数（検索ロボット等のアクセスは除く）。棒グラフは月ごとの合計（今月は今日まで）。', cw), x0, mm(288));
-  g.textAlign = 'right'; g.fillText('QRコード管理 ／ K-CREATE', x1, mm(292.5));
+  g.fillText(fitText(g, '※ 読み取り回数＝QRコードが読み取られて飛び先のページへ移動した回数（検索ロボット等のアクセスは除く）。', cw), x0, mm(287.5));
+  g.fillText(fitText(g, '棒グラフは週ごとの合計。各月を 1〜7日／8〜14日／15〜21日／22日〜末日 の4週に区切り、9-1W のように表しています。', cw - mm(30)), x0, mm(292));
+  g.textAlign = 'right'; g.fillText('QRコード管理 ／ K-CREATE', x1, mm(292));
 }
 function drawSalesCard(g, q, rank, x, y, w, h, d) {
-  var pad = mm(4), t = salesTitle(q), months = salesMonths(d, q);
+  var pad = mm(4), t = salesTitle(q), weeks = salesWeeks(d, q);
   g.fillStyle = '#fff'; g.strokeStyle = '#cbd5e1'; g.lineWidth = mm(0.3);
   rrect(g, x, y, w, h, mm(2.5)); g.fill(); g.stroke();
   // 順位
@@ -1883,9 +1886,9 @@ function drawSalesCard(g, q, rank, x, y, w, h, d) {
   g.fillStyle = '#64748b'; g.font = spFont(7.5, 400);
   g.fillText(fitText(g, t.sub || q.genre, tw), tx, by + mm(7.4));
   // 数字（3か月合計・1日平均・最多の週）
-  var sum = q.count, avg = d.days ? sum / d.days : 0, peak = months.reduce(function (m, mo) { return Math.max(m, mo.count); }, 0);
+  var sum = q.count, avg = d.days ? sum / d.days : 0, peak = weeks.reduce(function (m, wk) { return Math.max(m, wk.count); }, 0);
   var ly = by + bs + mm(5), vy = ly + mm(6.5);
-  var stats = [[(d.months || 3) + 'か月合計', fmt(sum), 16], ['1日平均', avg.toFixed(1), 11], ['最多の月', fmt(peak), 11]];
+  var stats = [[(d.months || 3) + 'か月合計', fmt(sum), 16], ['1日平均', avg.toFixed(1), 11], ['最多の週', fmt(peak), 11]];
   var sx = bx;
   stats.forEach(function (s, i) {
     g.textAlign = 'left'; g.font = spFont(7, 400); g.fillStyle = '#64748b'; g.fillText(s[0], sx, ly);
@@ -1894,18 +1897,20 @@ function drawSalesCard(g, q, rank, x, y, w, h, d) {
     g.font = spFont(7.5, 500); g.fillStyle = '#64748b'; g.fillText('回', sx + nw + mm(1), vy);
     sx += Math.max(nw + mm(11), mm(i ? 22 : 30));
   });
-  // 月ごとの棒グラフ（3本。今月は今日まで）
-  var cx0 = bx + mm(6), cx1 = x + w - pad - mm(6), cy0 = vy + mm(5.5), cy1 = y + h - pad - mm(5);
-  var nM = months.length, slot = (cx1 - cx0) / nM, bw = Math.min(slot * 0.5, mm(14)), maxv = Math.max(1, peak), labelH = mm(4.5);
-  g.strokeStyle = '#e2e8f0'; g.lineWidth = mm(0.25); g.beginPath(); g.moveTo(bx, cy1); g.lineTo(x + w - pad, cy1); g.stroke();
-  months.forEach(function (mo, i) {
-    var bh = Math.max((cy1 - cy0 - labelH) * mo.count / maxv, mm(0.5)), bxx = cx0 + i * slot + (slot - bw) / 2;
+  // 週ごとの棒グラフ（各月4週×3か月＝12本。ラベルは 9-1W のように月-週。今日より後の週は薄く）
+  var cx0 = bx, cx1 = x + w - pad, cy0 = vy + mm(5), cy1 = y + h - pad - mm(4.5);
+  var nW = weeks.length, slot = (cx1 - cx0) / nW, bw = slot * 0.62, maxv = Math.max(1, peak), labelH = mm(3.4);
+  g.strokeStyle = '#e2e8f0'; g.lineWidth = mm(0.25); g.beginPath(); g.moveTo(cx0, cy1); g.lineTo(cx1, cy1); g.stroke();
+  weeks.forEach(function (wk, i) {
+    var bh = Math.max((cy1 - cy0 - labelH) * wk.count / maxv, mm(0.4)), bxx = cx0 + i * slot + (slot - bw) / 2;
     var grad = g.createLinearGradient(0, cy1 - bh, 0, cy1); grad.addColorStop(0, '#3b82f6'); grad.addColorStop(1, '#93c5fd');
-    g.fillStyle = mo.count ? grad : '#e2e8f0';
-    rrect(g, bxx, cy1 - bh, bw, bh, mm(1)); g.fill();
+    g.fillStyle = wk.future ? '#f1f5f9' : wk.count ? grad : '#e2e8f0';
+    rrect(g, bxx, cy1 - bh, bw, bh, mm(0.6)); g.fill();
     g.textAlign = 'center';
-    g.fillStyle = mo.count ? '#0f172a' : '#94a3b8'; g.font = spFont(mo.count ? 9 : 7, 700); g.fillText(mo.count ? fmt(mo.count) : '0', bxx + bw / 2, cy1 - bh - mm(1.4));
-    g.fillStyle = '#475569'; g.font = spFont(7.5, 500); g.fillText(mo.label, bxx + bw / 2, cy1 + mm(4));
+    if (wk.count) { g.fillStyle = '#334155'; g.font = spFont(6.2, 500); g.fillText(fmt(wk.count), bxx + bw / 2, cy1 - bh - mm(1)); }
+    g.fillStyle = wk.future ? '#cbd5e1' : '#64748b'; g.font = spFont(6, 500); g.fillText(wk.label, bxx + bw / 2, cy1 + mm(3.3));
+    // 月の境目に薄い線
+    if (i % 4 === 0 && i) { g.strokeStyle = '#e2e8f0'; g.beginPath(); g.moveTo(cx0 + i * slot, cy0); g.lineTo(cx0 + i * slot, cy1); g.stroke(); }
   });
 }
 var spFontP = null;
