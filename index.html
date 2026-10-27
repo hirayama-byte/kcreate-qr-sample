@@ -172,6 +172,26 @@
   .medal.m2 { background: #e2e8f0; color: #475569; }
   .medal.m3 { background: #fde7d9; color: #c2410c; }
 
+  /* 営業ツールPDF */
+  .sales { display: grid; grid-template-columns: 380px minmax(0, 1fr); }
+  .sales > div { padding: 18px 22px; min-width: 0; }
+  .sales .sp-side { border-right: 1px solid var(--line); background: #fafbfd; }
+  .sp-tools { display: flex; align-items: center; gap: 8px; margin: 14px 0 8px; font-size: 12px; }
+  .sp-tools .sp, .sp-prevhead .sp { flex: 1; }
+  .sp-list { max-height: 560px; overflow: auto; border: 1px solid var(--line); border-radius: 8px; background: #fff; }
+  .sp-row { display: flex; align-items: center; gap: 8px; padding: 7px 10px; border-bottom: 1px solid var(--line-2); font-size: 12.5px; cursor: pointer; }
+  .sp-row:last-child { border-bottom: 0; }
+  .sp-row:hover { background: #f8fafc; }
+  .sp-row input { width: 15px; height: 15px; margin: 0; flex: none; }
+  .sp-row .rk { width: 22px; text-align: right; font-family: var(--mono); font-size: 11px; color: var(--faint); flex: none; }
+  .sp-row .nm { flex: 1; min-width: 0; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; font-weight: 500; }
+  .sp-row .sub { display: block; font-weight: 400; font-size: 11px; color: var(--faint); overflow: hidden; text-overflow: ellipsis; }
+  .sp-row .num { font-family: var(--mono); font-size: 12px; flex: none; }
+  .sp-row.off .nm { color: var(--muted); font-weight: 400; }
+  .sp-prevhead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 13px; font-weight: 500; }
+  .sp-paper { background: #e2e8f0; padding: 16px; border-radius: 8px; }
+  .sp-paper canvas { display: block; width: 100%; height: auto; background: #fff; box-shadow: 0 6px 20px rgba(15,23,42,.18); }
+
   .toast { position: fixed; bottom: 24px; left: 50%; transform: translateX(-50%); background: var(--side); color: #fff; padding: 10px 18px; border-radius: 8px; display: none; z-index: 20; font-size: 13px; box-shadow: 0 8px 24px rgba(0,0,0,.2); }
   .warn { background: #fffbeb; border: 1px solid #fde68a; color: #92400e; border-radius: 8px; padding: 10px 14px; font-size: 13px; margin-bottom: 14px; display: flex; gap: 10px; align-items: center; }
   .hide { display: none !important; }
@@ -323,7 +343,8 @@
             <select id="rGenre"><option value="">ジャンル：すべて</option></select>
             <span class="muted" id="rInfo" style="font-size:12px"></span>
             <span class="sp"></span>
-            <button class="btn" id="rXlsx" title="エントリーシートの形で Excel に書き出す"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M6 11l6 6 6-6M4 21h16"/></svg>Excel出力</button>
+            <button class="btn primary" id="rPdf" title="ジャンルの読み取り上位を、直近3か月のグラフつきで A4 縦1枚の PDF に"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l5 5v15H6zM14 2v6h6M9 13h6M9 17h6"/></svg>営業ツールPDF</button>
+          <button class="btn" id="rXlsx" title="エントリーシートの形で Excel に書き出す"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M6 11l6 6 6-6M4 21h16"/></svg>Excel出力</button>
           </div>
           <div class="tbl">
             <table class="rank">
@@ -978,6 +999,31 @@ function getRanking(from, to, limit) {
     .slice(0, limit || 30);
 }
 
+// ---------- 営業ツールPDF ----------
+// ジャンル内で、直近 days 日の読み取りが多い順に limit 件（回数0は除く）。各QRに日別の回数 daily {date: n} を付ける（週ごとのグラフ用）
+// genre が空なら全ジャンル。候補の総数 candidates も返す（画面で「全 n 件」と出す）
+function getSalesReport(genre, days, limit) {
+  days = Math.min(Math.max(Math.round(+days) || 91, 7), 366);
+  limit = Math.min(Math.max(Math.round(+limit) || 40, 1), 60);
+  genre = String(genre || '');
+  if (genre && genres_().indexOf(genre) < 0) throw new Error('ジャンルを一覧から選んでください');
+  var to = ymd_(new Date()), from = addDays_(to, -(days - 1));
+  var counts = totals_(from, to), members = memberMap_();
+  var all = rows_('qr').map(qrObj_).filter(function (q) { return !q.deleted && (!genre || q.genre === genre) && counts[q.code] > 0; })
+    .map(function (q) { q.count = counts[q.code]; q.ownerName = members[q.ownerEmail] || q.ownerName || q.ownerEmail; return q; })
+    .sort(function (a, b) { return b.count - a.count || String(a.qid).localeCompare(String(b.qid)); });
+  var items = all.slice(0, limit);
+  var reqs = items.map(function (q) {
+    return { url: WORKER_URL + '/api/daily?code=' + q.code + '&from=' + from + '&to=' + to, method: 'get', muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + WORKER_TOKEN } };
+  });
+  var daily = reqs.length ? UrlFetchApp.fetchAll(reqs).map(function (res) {
+    if (res.getResponseCode() !== 200) throw new Error('読み取り記録サーバーとの通信に失敗しました（' + res.getResponseCode() + '）。少し待ってもう一度お試しください');
+    return JSON.parse(res.getContentText());
+  }) : [];
+  items.forEach(function (q, i) { q.daily = daily[i] || {}; });
+  return { genre: genre, from: from, to: to, days: days, items: items, candidates: all.length };
+}
+
 // ---------- QRバトル ----------
 // 日付の足し算（yyyy-MM-dd のまま。月をまたいで日が無いときは月末に丸める。例: 01-31 +1か月 → 02-28）
 function addMonths_(s, n) {
@@ -1147,7 +1193,7 @@ var WORKER_TOKEN = 'test-token';
 var S = { me: null, genres: [], divisions: [], baseUrl: '', list: [], folder: 'all', sort: 'created', desc: true, chart: null, rankMode: 'battle', rankMeta: null, bootList: false, page: 1 };
 var PAGE = 200; // 一覧は200件ずつ表示（「さらに表示」で次の200件）
 // 重いライブラリは必要になったときに読み込む（最初の表示を速くするため）
-var LIBS = { Chart: 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js', XLSX: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js' };
+var LIBS = { Chart: 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js', XLSX: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js' };
 var libP = {};
 function ensureLib(name) {
   if (window[name]) return Promise.resolve();
@@ -1711,6 +1757,178 @@ function exportBattleXlsxNow() {
   toast('Excel を書き出しました');
 }
 $('rXlsx').onclick = exportBattleXlsx;
+
+// ---------- 営業ツールPDF（ジャンル別の読み取り上位を、直近3か月のグラフつきで A4 縦1枚に） ----------
+var SP = { data: null, picked: [], timer: null };
+var SP_MAX = 8;     // 出力は最大8件（2列×4段。6件以下なら2列×3段で大きめに）
+var SP_DAYS = 91;   // 直近3か月＝13週
+var SP_LIMIT = 40;  // 候補はジャンル内の上位40件まで
+var SP_W = 2480, SP_H = 3508; // A4 縦・300dpi
+function mm(v) { return v * SP_W / 210; }
+function spFont(ptSize, weight) { return (weight || 400) + ' ' + Math.round(ptSize * SP_W / 210 * 25.4 / 72) + 'px "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", "Meiryo", sans-serif'; }
+function addYmd(s, n) { var t = new Date(s + 'T00:00:00Z'); t.setUTCDate(t.getUTCDate() + n); return t.toISOString().slice(0, 10); }
+$('rPdf').onclick = openSales;
+function openSales() {
+  var g = $('rGenre').value;
+  $('mBody').innerHTML =
+    '<div class="mhead"><h2>営業ツールPDF</h2><div class="meta">ジャンルの読み取り上位を、直近3か月（13週）の週ごとのグラフつきで A4 縦1枚にまとめます。チェックした最大 ' + SP_MAX + ' 件を出力します（順位は読み取り回数順）。</div></div>' +
+    '<div class="sales"><div class="sp-side">' +
+      '<div class="form" style="grid-template-columns:76px 1fr;gap:10px">' +
+        '<label for="spGenre">ジャンル</label><select id="spGenre"><option value=""' + (g ? '' : ' selected') + '>すべて</option>' + genreOptions(g) + '</select>' +
+        '<label for="spNote">宛名・メモ</label><input type="text" id="spNote" placeholder="例：○○様 ご提案資料（任意・右上に入ります）">' +
+      '</div>' +
+      '<div class="sp-tools"><span class="muted" id="spInfo">集計中…</span><span class="sp"></span><button class="btn" id="spTop">上位' + SP_MAX + '件を選び直す</button></div>' +
+      '<div class="sp-list" id="spList"></div>' +
+    '</div><div class="sp-prev">' +
+      '<div class="sp-prevhead"><span>プレビュー</span><span class="muted" id="spCount"></span><span class="sp"></span><button class="btn primary" id="spOut" disabled>PDFを出力</button></div>' +
+      '<div class="sp-paper"><canvas id="spCanvas" width="' + SP_W + '" height="' + SP_H + '"></canvas></div><div class="err" id="spErr"></div>' +
+    '</div></div>';
+  $('modal').classList.add('on');
+  $('spGenre').onchange = loadSales;
+  $('spNote').oninput = function () { clearTimeout(SP.timer); SP.timer = setTimeout(drawSalesPreview, 200); };
+  $('spTop').onclick = function () { if (!SP.data) return; pickTop(); renderSalesList(); drawSalesPreview(); };
+  $('spOut').onclick = outputSalesPdf;
+  $('spList').addEventListener('change', function (e) {
+    var cb = e.target; if (cb.type !== 'checkbox' || !SP.data) return;
+    if (cb.checked && SP.picked.length >= SP_MAX) { cb.checked = false; toast('出力できるのは ' + SP_MAX + ' 件までです。ほかのチェックを外してから選んでください'); return; }
+    SP.picked = SP.data.items.filter(function (q) { return q.code === cb.dataset.c ? cb.checked : SP.picked.indexOf(q.code) >= 0; }).map(function (q) { return q.code; });
+    renderSalesList(); drawSalesPreview();
+  });
+  loadSales();
+}
+function pickTop() { SP.picked = SP.data.items.slice(0, SP_MAX).map(function (q) { return q.code; }); }
+function loadSales() {
+  var g = $('spGenre').value;
+  SP.data = null; SP.picked = [];
+  $('spInfo').textContent = '集計中…'; $('spList').innerHTML = ''; $('spErr').textContent = ''; $('spOut').disabled = true; $('spCount').textContent = '';
+  call('getSalesReport', g, SP_DAYS, SP_LIMIT).then(function (r) {
+    if (!$('spGenre') || $('spGenre').value !== g) return; // 待っている間に閉じた・ジャンルが変わった
+    SP.data = r; pickTop(); renderSalesList(); drawSalesPreview();
+  }).catch(function (e) { if ($('spInfo')) { $('spInfo').textContent = ''; $('spErr').textContent = e.message; } });
+}
+function renderSalesList() {
+  var d = SP.data, items = d.items;
+  $('spInfo').textContent = items.length ? (d.genre || '全ジャンル') + '　' + fmtYmd(d.from) + '〜' + fmtYmd(d.to) + ' の上位 ' + items.length + ' 件' + (d.candidates > items.length ? '（全 ' + d.candidates + ' 件）' : '') : '';
+  $('spCount').textContent = SP.picked.length + ' / ' + SP_MAX + ' 件を出力';
+  $('spOut').disabled = !SP.picked.length;
+  $('spList').innerHTML = items.length ? items.map(function (q, i) {
+    var on = SP.picked.indexOf(q.code) >= 0, t = salesTitle(q);
+    return '<label class="sp-row' + (on ? '' : ' off') + '"><input type="checkbox" data-c="' + esc(q.code) + '"' + (on ? ' checked' : '') + '><span class="rk">' + (i + 1) + '</span>' +
+      '<span class="nm">' + esc(t.client) + '<span class="sub">' + esc(t.sub || q.genre) + '</span></span><span class="num">' + fmt(q.count) + '</span></label>';
+  }).join('') : '<div class="loading" style="padding:30px">この期間に読み取りのあるQRはありません</div>';
+}
+// 名称を「クライアント名」と「号・版 ／ 用途」に分ける。「2612一宮版_●●●_メモ」なら ●●● がクライアント名
+function salesTitle(q) {
+  var parts = String(q.name || '').split(/[_＿]/).map(function (x) { return x.trim(); }).filter(String);
+  var head = parts.length > 1 ? battleSuggest(parts[0]) : null;
+  if (head) return { client: parts[1], sub: [head.label].concat(parts.slice(2)).join(' ／ ') };
+  return { client: parts[0] || q.name, sub: parts.slice(1).join(' ／ ') };
+}
+// 期間を7日ずつに区切って週ごとの合計にする [{from, to, count}]
+function salesWeeks(d, q) {
+  var weeks = [], n = Math.ceil(d.days / 7), daily = q.daily || {};
+  for (var w = 0; w < n; w++) {
+    var c = 0, f = addYmd(d.from, w * 7), t = f;
+    for (var i = 0; i < 7; i++) { var di = w * 7 + i; if (di >= d.days) break; t = addYmd(d.from, di); c += daily[t] || 0; }
+    weeks.push({ from: f, to: t, count: c });
+  }
+  return weeks;
+}
+function fitText(g, s, maxW) { s = String(s == null ? '' : s); if (g.measureText(s).width <= maxW) return s; while (s.length > 1 && g.measureText(s + '…').width > maxW) s = s.slice(0, -1); return s + '…'; }
+function rrect(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
+// A4 縦1枚を描く（2480×3508px）。codes の順に左上から2列で並べる
+function drawSalesReport(cv, d, codes, note) {
+  var g = cv.getContext('2d'), W = cv.width, H = cv.height;
+  g.setTransform(1, 0, 0, 1, 0, 0);
+  g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
+  g.textBaseline = 'alphabetic';
+  var M = mm(13), x0 = M, x1 = W - M, cw = x1 - x0;
+  var items = codes.map(function (c) { return d.items.filter(function (q) { return q.code === c; })[0]; }).filter(Boolean);
+  // ヘッダー
+  g.fillStyle = '#2563eb'; g.fillRect(x0, mm(12), mm(12), mm(1.4));
+  g.fillStyle = '#0f172a'; g.font = spFont(20, 700); g.textAlign = 'left';
+  g.fillText('QRコード 読み取り実績レポート', x0, mm(24));
+  g.font = spFont(10.5, 500); g.fillStyle = '#334155';
+  g.fillText('ジャンル：' + (d.genre || '全ジャンル') + '　上位 ' + items.length + ' 件 ／ 直近3か月（' + fmtYmd(d.from) + ' 〜 ' + fmtYmd(d.to) + '・' + Math.ceil(d.days / 7) + '週）', x0, mm(31));
+  g.textAlign = 'right';
+  if (note) { g.font = spFont(12, 700); g.fillStyle = '#0f172a'; g.fillText(fitText(g, note, mm(85)), x1, mm(21)); }
+  g.font = spFont(9, 400); g.fillStyle = '#64748b';
+  g.fillText('情報誌くれよん ／ 株式会社ケイクリエイト', x1, mm(27.5));
+  g.fillText('出力日 ' + fmtYmd(ymd(new Date())), x1, mm(32));
+  g.fillStyle = '#e2e8f0'; g.fillRect(x0, mm(36), cw, mm(0.4));
+  // カード（2列。段数は件数から。6件以下は3段で大きめ）
+  var n = items.length, cols = 2, rows = Math.max(1, Math.ceil(n / cols)), gap = mm(5), top = mm(42), bottom = mm(282);
+  var ch = Math.min(mm(95), (bottom - top - gap * (rows - 1)) / rows), cwid = (cw - gap) / cols;
+  if (!n) { g.textAlign = 'center'; g.font = spFont(12, 500); g.fillStyle = '#94a3b8'; g.fillText('出力するQRを左の一覧から選んでください', W / 2, mm(120)); }
+  items.forEach(function (q, i) { drawSalesCard(g, q, i + 1, x0 + (i % cols) * (cwid + gap), top + Math.floor(i / cols) * (ch + gap), cwid, ch, d); });
+  // フッター
+  g.textAlign = 'left'; g.font = spFont(7.5, 400); g.fillStyle = '#64748b';
+  g.fillText('※ 読み取り回数は、QRコードが読み取られて飛び先のページへ移動した回数です（検索ロボット等のアクセスは除く）。棒グラフは週ごとの合計です。', x0, mm(288));
+  g.textAlign = 'right'; g.fillText('QRコード管理 ／ K-CREATE', x1, mm(292.5));
+}
+function drawSalesCard(g, q, rank, x, y, w, h, d) {
+  var pad = mm(4), t = salesTitle(q), weeks = salesWeeks(d, q);
+  g.fillStyle = '#fff'; g.strokeStyle = '#cbd5e1'; g.lineWidth = mm(0.3);
+  rrect(g, x, y, w, h, mm(2.5)); g.fill(); g.stroke();
+  // 順位
+  var bs = mm(8), bx = x + pad, by = y + pad;
+  var col = rank === 1 ? ['#fef3c7', '#b45309'] : rank === 2 ? ['#e2e8f0', '#475569'] : rank === 3 ? ['#fde7d9', '#c2410c'] : ['#f1f5f9', '#64748b'];
+  g.fillStyle = col[0]; rrect(g, bx, by, bs, bs, mm(1.6)); g.fill();
+  g.fillStyle = col[1]; g.font = spFont(11, 700); g.textAlign = 'center'; g.fillText(String(rank), bx + bs / 2, by + bs * 0.72);
+  // 名称
+  var tx = bx + bs + mm(2.5), tw = x + w - pad - tx;
+  g.textAlign = 'left'; g.fillStyle = '#0f172a'; g.font = spFont(12.5, 700);
+  g.fillText(fitText(g, t.client, tw), tx, by + mm(3.7));
+  g.fillStyle = '#64748b'; g.font = spFont(7.5, 400);
+  g.fillText(fitText(g, t.sub || q.genre, tw), tx, by + mm(7.4));
+  // 数字（3か月合計・1日平均・最多の週）
+  var sum = q.count, avg = d.days ? sum / d.days : 0, peak = weeks.reduce(function (m, wk) { return Math.max(m, wk.count); }, 0);
+  var ly = by + bs + mm(5), vy = ly + mm(6.5);
+  var stats = [['3か月合計', fmt(sum), 16], ['1日平均', avg.toFixed(1), 11], ['最多の週', fmt(peak), 11]];
+  var sx = bx;
+  stats.forEach(function (s, i) {
+    g.textAlign = 'left'; g.font = spFont(7, 400); g.fillStyle = '#64748b'; g.fillText(s[0], sx, ly);
+    g.font = spFont(s[2], 700); g.fillStyle = i ? '#334155' : '#0f172a'; g.fillText(s[1], sx, vy);
+    var nw = g.measureText(s[1]).width;
+    g.font = spFont(7.5, 500); g.fillStyle = '#64748b'; g.fillText('回', sx + nw + mm(1), vy);
+    sx += Math.max(nw + mm(11), mm(i ? 22 : 30));
+  });
+  // 週ごとの棒グラフ
+  var cx0 = bx, cx1 = x + w - pad, cy0 = vy + mm(5), cy1 = y + h - pad - mm(4.5);
+  var nW = weeks.length, slot = (cx1 - cx0) / nW, bw = slot * 0.62, maxv = Math.max(1, peak), labelH = mm(3.2);
+  g.strokeStyle = '#e2e8f0'; g.lineWidth = mm(0.25); g.beginPath(); g.moveTo(cx0, cy1); g.lineTo(cx1, cy1); g.stroke();
+  weeks.forEach(function (wk, i) {
+    var bh = Math.max((cy1 - cy0 - labelH) * wk.count / maxv, mm(0.4)), bxx = cx0 + i * slot + (slot - bw) / 2;
+    var grad = g.createLinearGradient(0, cy1 - bh, 0, cy1); grad.addColorStop(0, '#3b82f6'); grad.addColorStop(1, '#93c5fd');
+    g.fillStyle = wk.count ? grad : '#e2e8f0';
+    rrect(g, bxx, cy1 - bh, bw, bh, mm(0.6)); g.fill();
+    g.textAlign = 'center';
+    if (wk.count) { g.fillStyle = '#334155'; g.font = spFont(6, 500); g.fillText(fmt(wk.count), bxx + bw / 2, cy1 - bh - mm(1)); }
+    if (i % 2 === 0) { g.fillStyle = '#94a3b8'; g.font = spFont(6, 400); g.fillText(mdLabel(wk.from), bxx + bw / 2, cy1 + mm(3.2)); }
+  });
+}
+var spFontP = null;
+function spFontsReady() {
+  if (!spFontP) spFontP = (document.fonts && document.fonts.load ? Promise.all([document.fonts.load('700 40px "Noto Sans JP"'), document.fonts.load('400 40px "Noto Sans JP"')]) : Promise.resolve()).catch(function () {}).then(function () {});
+  return spFontP;
+}
+function drawSalesPreview() {
+  if (!SP.data || !$('spCanvas')) return;
+  var note = $('spNote').value.trim();
+  spFontsReady().then(function () { if (SP.data && $('spCanvas')) drawSalesReport($('spCanvas'), SP.data, SP.picked, note); });
+}
+function outputSalesPdf() {
+  if (!SP.data || !SP.picked.length) return;
+  var b = $('spOut'); b.disabled = true; $('spErr').textContent = '';
+  var cv = $('spCanvas'), note = $('spNote').value.trim(), d = SP.data, picked = SP.picked.slice();
+  Promise.all([ensureLib('jspdf'), spFontsReady()]).then(function () {
+    drawSalesReport(cv, d, picked, note);
+    var pdf = new jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
+    pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
+    pdf.save('QR読み取り実績_' + safeName(d.genre || '全ジャンル') + '_' + ymd(new Date()) + '.pdf');
+    toast('PDF を書き出しました');
+  }).catch(function (e) { if ($('spErr')) $('spErr').textContent = e.message; }).then(function () { if ($('spOut')) $('spOut').disabled = !SP.picked.length; });
+}
 $('rRows').onclick = function (e) {
   var tr = e.target.closest('tr.row'); if (!tr) return;
   var hit = S.list.filter(function (q) { return q.code === tr.dataset.c; })[0];
