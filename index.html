@@ -1327,6 +1327,8 @@ document.querySelector('#list thead').onclick = function (e) {
   if (S.sort === k) S.desc = !S.desc; else { S.sort = k; S.desc = (k === 'last30' || k === 'total' || k === 'created' || k === 'battleStart' || k === 'qid'); }
   renderList();
 };
+// 名称の号（yymm。例 2612一宮版 → 2612）。無ければ -1（号のあるものより下）
+function issueNo(name) { var m = /(?:^|\D)(\d{2})(0[1-9]|1[0-2])(?!\d)/.exec(name || ''); return m ? +(m[1] + m[2]) : -1; }
 // ID の比較: 番号（数字）で比べ、同じなら英字で比べる
 function cmpQid(a, b) {
   var ma = /^([A-Z]*)(\d+)$/.exec(a.qid || ''), mb = /^([A-Z]*)(\d+)$/.exec(b.qid || '');
@@ -1346,7 +1348,8 @@ function filtered() {
     var x = a[S.sort], y = b[S.sort];
     var num = S.sort === 'last30' || S.sort === 'total';
     var c = S.sort === 'qid' ? cmpQid(a, b) : num ? (x == null ? -1 : x) - (y == null ? -1 : y) : String(x).localeCompare(String(y), 'ja');
-    if (c === 0 && S.sort !== 'qid') c = cmpQid(a, b); // 同じ値なら ID の番号が大きい方を新しいとみなす
+    if (c === 0 && S.sort !== 'qid') c = issueNo(a.name) - issueNo(b.name); // 同じ値なら名称の号（2612 など年月）が新しい方を上に
+    if (c === 0 && S.sort !== 'qid') c = cmpQid(a, b); // それも同じなら ID の番号が大きい方を新しいとみなす
     return S.desc ? -c : c;
   });
 }
