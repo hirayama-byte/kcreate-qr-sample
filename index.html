@@ -482,7 +482,10 @@
       props: props
     };
     env.worker = fakeWorker();
-    env.UrlFetchApp = { fetch: function (url, opt) { return env.worker.fetch(url, opt || {}); } };
+    env.UrlFetchApp = {
+      fetch: function (url, opt) { return env.worker.fetch(url, opt || {}); },
+      fetchAll: function (reqs) { return reqs.map(function (r) { return env.worker.fetch(r.url, r); }); }
+    };
     return env;
   }
 
@@ -555,6 +558,7 @@ var QR_HEAD = ['code', 'name', 'genre', 'url', 'owner_email', 'owner_name', 'cre
 var MEMBER_HEAD = ['email', 'name', 'prefix']; // prefix = IDの英字（A, B, … Z, AA, AB …）。管理者はシートで変えてもよい
 var DEFAULT_DIVISIONS = ['表紙巻頭部門', 'グルメ部門', 'ビューティー部門', 'ヘルス部門', 'スクール部門', 'ハウジング部門', 'その他部門', '求人部門'];
 var CODE_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789'; // 見間違えやすい i l o 0 1 を除く
+var SCHEMA_V = '3'; // シートの列構成の版。列を足したら上げる（init が1回だけ ensureColumns_/ensureIds_ を走らせる）
 
 function doGet(e) {
   // ?page=guide → 使い方ガイド（同じURLなので会社アカウントでログインした人だけ見られる）
@@ -630,11 +634,17 @@ function now_() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm'
 function ymd_(d) { return Utilities.formatDate(d, TZ, 'yyyy-MM-dd'); }
 function str_(v) { return v instanceof Date ? ymd_(v) : String(v); }
 
+// 設定系の小さいシートは1回の実行の中で何度も読むので、読んだ結果を覚えておく（書いたら bust_ で消す）
+var MEMO_SHEETS = { genres: 1, divisions: 1, admins: 1, members: 1, settings: 1 };
+var memo_ = {};
+function bust_(name) { delete memo_[name]; }
 function rows_(name) {
+  if (MEMO_SHEETS[name] && memo_[name]) return memo_[name];
   var sh = sheet_(name);
   var n = sh.getLastRow();
-  if (n < 2) return [];
-  return sh.getRange(2, 1, n - 1, sh.getLastColumn()).getValues();
+  var v = n < 2 ? [] : sh.getRange(2, 1, n - 1, sh.getLastColumn()).getValues();
+  if (MEMO_SHEETS[name]) memo_[name] = v;
+  return v;
 }
 
 function setting_(key) {
@@ -686,6 +696,7 @@ function prefixFor_(email) {
   if (email !== owner && !ownerHas) used['A'] = true;
   for (var i = 0; !p; i++) { var c = prefixAt_(i); if (!used[c]) p = c; }
   if (idx >= 0) sh.getRange(idx + 2, 3).setValue(p); else sh.appendRow([email, '', p]);
+  bust_('members');
   return p;
 }
 function fmtQid_(prefix, n) { return prefix + ('000000' + n).slice(-6); }
@@ -763,6 +774,16 @@ function worker_(method, path, body) {
 function putLink_(code, url, deleted) { worker_('put', '/api/links/' + code, { url: url, deleted: !!deleted }); }
 // 期間の回数 { code: n }
 function totals_(from, to) { return worker_('get', '/api/totals?from=' + from + '&to=' + to); }
+// 複数の期間を同時に取る（fetchAll で並列）→ [{code: n}, ...]
+function totalsMany_(ranges) {
+  var reqs = ranges.map(function (r) {
+    return { url: WORKER_URL + '/api/totals?from=' + r[0] + '&to=' + r[1], method: 'get', muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + WORKER_TOKEN } };
+  });
+  return UrlFetchApp.fetchAll(reqs).map(function (res) {
+    if (res.getResponseCode() !== 200) throw new Error('読み取り記録サーバーとの通信に失敗しました（' + res.getResponseCode() + '）。少し待ってもう一度お試しください');
+    return JSON.parse(res.getContentText());
+  });
+}
 // QRごとに別々の期間の回数 [{code, from, to}] → { code: n }
 function counts_(list) { return worker_('post', '/api/counts', list); }
 
@@ -786,8 +807,8 @@ function init() {
   var email = myEmail_();
   if (!email) throw new Error('ログイン情報が取得できません。会社のGoogleアカウントで開いてください');
   if (!ss_().getSheetByName('qr')) setup();
-  ensureColumns_();
-  ensureIds_();
+  var props = PropertiesService.getScriptProperties();
+  if (props.getProperty('schema_v') !== SCHEMA_V) { ensureColumns_(); ensureIds_(); props.setProperty('schema_v', SCHEMA_V); }
   return {
     me: { email: email, name: memberMap_()[email] || '', isAdmin: isAdmin_(email) },
     genres: genres_(),
@@ -806,9 +827,10 @@ function setMyName(name) {
   var sh = sheet_('members');
   var rows = rows_('members');
   for (var i = 0; i < rows.length; i++) {
-    if (String(rows[i][0]).toLowerCase() === email) { sh.getRange(i + 2, 2).setValue(name); return name; }
+    if (String(rows[i][0]).toLowerCase() === email) { sh.getRange(i + 2, 2).setValue(name); bust_('members'); return name; }
   }
   sh.appendRow([email, name]);
+  bust_('members');
   return name;
 }
 
@@ -818,16 +840,24 @@ function listQr() {
   var p = last30_();
   var month = null, all = null;
   try {
-    month = totals_(p.from, p.to);
-    all = totals_('0000-00-00', '9999-99-99');
+    var t = totalsMany_([[p.from, p.to], ['0000-00-00', '9999-99-99']]);
+    month = t[0]; all = t[1];
   } catch (e) { console.error(e); month = all = null; }
   var members = memberMap_();
-  return rows_('qr').map(qrObj_).filter(function (q) { return !q.deleted; }).map(function (q) {
+  var rows = rows_('qr');
+  if (rows.some(function (r) { return r[0] && !String(r[11] || ''); })) { ensureIds_(); rows = rows_('qr'); } // ID の無い行があれば補う
+  return rows.map(qrObj_).filter(function (q) { return !q.deleted; }).map(function (q) {
     q.ownerName = members[q.ownerEmail] || q.ownerName || q.ownerEmail;
     q.last30 = month ? month[q.code] || 0 : null;
     q.total = all ? all[q.code] || 0 : null;
     return q;
   });
+}
+
+// 画面を開いたときの1回分：init と一覧をまとめて返す（往復を1回にする）
+function boot() {
+  var i = init();
+  return { init: i, list: listQr() };
 }
 
 function listTrash() {
@@ -1113,10 +1143,20 @@ var WORKER_TOKEN = 'test-token';
 })();
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js"></script>
-<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
 <script>
-var S = { me: null, genres: [], divisions: [], baseUrl: '', list: [], folder: 'all', sort: 'created', desc: true, chart: null, rankMode: 'battle', rankMeta: null };
+var S = { me: null, genres: [], divisions: [], baseUrl: '', list: [], folder: 'all', sort: 'created', desc: true, chart: null, rankMode: 'battle', rankMeta: null, bootList: false };
+// 重いライブラリは必要になったときに読み込む（最初の表示を速くするため）
+var LIBS = { Chart: 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js', XLSX: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js' };
+var libP = {};
+function ensureLib(name) {
+  if (window[name]) return Promise.resolve();
+  if (!libP[name]) libP[name] = new Promise(function (ok, ng) {
+    var sc = document.createElement('script'); sc.src = LIBS[name];
+    sc.onload = ok; sc.onerror = function () { delete libP[name]; ng(new Error(name + ' の読み込みに失敗しました。通信を確認してもう一度お試しください')); };
+    document.head.appendChild(sc);
+  });
+  return libP[name];
+}
 var $ = function (id) { return document.getElementById(id); };
 var TITLES = { list: 'QR一覧', 'new': '新規登録', rank: 'ランキング', trash: 'ゴミ箱' };
 // ジャンルの色（背景, 文字）
@@ -1189,7 +1229,8 @@ function showMe() {
   $('meAv').textContent = String(n).charAt(0).toUpperCase();
   $('meRole').textContent = S.me.isAdmin ? '管理者' : 'メンバー';
 }
-call('init').then(function (r) {
+call('boot').then(function (b) {
+  var r = b.init;
   S.me = r.me; S.genres = r.genres; S.baseUrl = r.baseUrl;
   showMe();
   if (r.me.isAdmin) $('tabTrash').classList.remove('hide');
@@ -1208,7 +1249,9 @@ call('init').then(function (r) {
   buildPeriods();
   $('boot').classList.add('hide');
   if (!r.me.name) openName(true);
+  S.list = b.list; S.bootList = true; // 一覧は boot で受け取り済み。取り直さない
   showTab('list');
+  setTimeout(function () { ensureLib('Chart').catch(function () {}); }, 2500); // 詳細のグラフ用に、落ち着いてから先読み
 }).catch(function (e) { $('boot').textContent = 'エラー：' + e.message; });
 
 $('myNameSave').onclick = function () {
@@ -1248,13 +1291,15 @@ function showTab(tab) {
 }
 
 // ---------- 一覧 ----------
+function applyList(list) {
+  S.list = list;
+  $('countWarn').classList.toggle('hide', !list.some(function (q) { return q.last30 == null; }));
+  renderFolders(); renderList();
+}
 function loadList() {
+  if (S.bootList) { S.bootList = false; applyList(S.list); return Promise.resolve(); }
   $('rows').innerHTML = '<tr><td colspan="9" class="loading">読み込み中…</td></tr>';
-  return call('listQr').then(function (list) {
-    S.list = list;
-    $('countWarn').classList.toggle('hide', !list.some(function (q) { return q.last30 == null; }));
-    renderFolders(); renderList();
-  })
+  return call('listQr').then(applyList)
     .catch(function (e) { $('rows').innerHTML = '<tr><td colspan="9" class="err">' + esc(e.message) + '</td></tr>'; });
 }
 function renderFolders() {
@@ -1414,7 +1459,8 @@ function openDetail(q) {
 function loadStats(code) {
   var from = $('dFrom').value, to = $('dTo').value;
   $('dSum').textContent = '…'; $('dAvg').textContent = '…';
-  call('getStats', code, from, to).then(function (r) {
+  Promise.all([call('getStats', code, from, to), ensureLib('Chart')]).then(function (pr) {
+    var r = pr[0];
     var sum = r.days.reduce(function (s, d) { return s + d.count; }, 0);
     $('dSum').textContent = fmt(sum);
     $('dAvg').textContent = r.days.length ? (sum / r.days.length).toFixed(1) : '0';
@@ -1628,6 +1674,10 @@ function slashDate(s) { return s ? s.slice(0, 4) + '/' + (+s.slice(5, 7)) + '/' 
 var CIRCULATION = { '一宮': 208900, '江南': 60600, '岩倉': 58250, '清須': 66400, '津島': 59900, '西北': 67200 };
 function circulationOf(name) { var ed = battleSuggest(name); return ed ? CIRCULATION[ed.edition] || '' : ''; }
 function exportBattleXlsx() {
+  var b = $('rXlsx'); b.disabled = true;
+  ensureLib('XLSX').then(exportBattleXlsxNow).catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; });
+}
+function exportBattleXlsxNow() {
   var meta = S.rankMeta, rows = rankFiltered();
   if (!meta || !rows.length) { toast('書き出すQRがありません'); return; }
   var head = ['NO.', '原稿ID', 'QRコードID', 'エントリー部門', 'クライアント名', '媒体種', '部数・個数', 'QR計測期間(31日間以内) 開始日', '終了日'];
