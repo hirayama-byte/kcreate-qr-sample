@@ -1759,7 +1759,7 @@ function exportBattleXlsxNow() {
 $('rXlsx').onclick = exportBattleXlsx;
 
 // ---------- 営業ツールPDF（ジャンル別の読み取り上位を、直近3か月のグラフつきで A4 縦1枚に） ----------
-var SP = { data: null, picked: [], timer: null };
+var SP = { data: null, picked: [] };
 var SP_MAX = 8;     // 出力は最大8件（2列×4段。6件以下なら2列×3段で大きめに）
 var SP_MONTHS = 3;  // 直近3か月＝今月と前2か月（前々月の1日〜今日）
 var SP_LIMIT = 40;  // 候補はジャンル内の上位40件まで
@@ -1775,8 +1775,7 @@ function openSales() {
     '<div class="sales"><div class="sp-side">' +
       '<div class="form" style="grid-template-columns:76px 1fr;gap:10px">' +
         '<label for="spGenre">ジャンル</label><select id="spGenre"><option value=""' + (g ? '' : ' selected') + '>すべて</option>' + genreOptions(g) + '</select>' +
-        '<label for="spNote">宛名・メモ</label><input type="text" id="spNote" placeholder="例：○○様 ご提案資料（任意・右上に入ります）">' +
-      '</div>' +
+              '</div>' +
       '<div class="sp-tools"><span class="muted" id="spInfo">集計中…</span><span class="sp"></span><button class="btn" id="spTop">上位' + SP_MAX + '件を選び直す</button></div>' +
       '<div class="sp-list" id="spList"></div>' +
     '</div><div class="sp-prev">' +
@@ -1785,7 +1784,6 @@ function openSales() {
     '</div></div>';
   $('modal').classList.add('on');
   $('spGenre').onchange = loadSales;
-  $('spNote').oninput = function () { clearTimeout(SP.timer); SP.timer = setTimeout(drawSalesPreview, 200); };
   $('spTop').onclick = function () { if (!SP.data) return; pickTop(); renderSalesList(); drawSalesPreview(); };
   $('spOut').onclick = outputSalesPdf;
   $('spList').addEventListener('change', function (e) {
@@ -1841,7 +1839,7 @@ function ymJa(s) { return s.slice(0, 4) + '年' + (+s.slice(5, 7)) + '月'; }
 function fitText(g, s, maxW) { s = String(s == null ? '' : s); if (g.measureText(s).width <= maxW) return s; while (s.length > 1 && g.measureText(s + '…').width > maxW) s = s.slice(0, -1); return s + '…'; }
 function rrect(g, x, y, w, h, r) { r = Math.min(r, w / 2, h / 2); g.beginPath(); g.moveTo(x + r, y); g.arcTo(x + w, y, x + w, y + h, r); g.arcTo(x + w, y + h, x, y + h, r); g.arcTo(x, y + h, x, y, r); g.arcTo(x, y, x + w, y, r); g.closePath(); }
 // A4 縦1枚を描く（2480×3508px）。codes の順に左上から2列で並べる
-function drawSalesReport(cv, d, codes, note) {
+function drawSalesReport(cv, d, codes) {
   var g = cv.getContext('2d'), W = cv.width, H = cv.height;
   g.setTransform(1, 0, 0, 1, 0, 0);
   g.fillStyle = '#fff'; g.fillRect(0, 0, W, H);
@@ -1855,7 +1853,6 @@ function drawSalesReport(cv, d, codes, note) {
   g.font = spFont(10.5, 500); g.fillStyle = '#334155';
   g.fillText('ジャンル：' + (d.genre || '全ジャンル') + '　上位 ' + items.length + ' 件 ／ 直近' + (d.months || 3) + 'か月（' + ymJa(d.from) + ' 〜 ' + fmtYmd(d.to) + '）', x0, mm(31));
   g.textAlign = 'right';
-  if (note) { g.font = spFont(12, 700); g.fillStyle = '#0f172a'; g.fillText(fitText(g, note, mm(85)), x1, mm(21)); }
   g.font = spFont(9, 400); g.fillStyle = '#64748b';
   g.fillText('情報誌くれよん ／ 株式会社ケイクリエイト', x1, mm(27.5));
   g.fillText('出力日 ' + fmtYmd(ymd(new Date())), x1, mm(32));
@@ -1918,15 +1915,14 @@ function spFontsReady() {
 }
 function drawSalesPreview() {
   if (!SP.data || !$('spCanvas')) return;
-  var note = $('spNote').value.trim();
-  spFontsReady().then(function () { if (SP.data && $('spCanvas')) drawSalesReport($('spCanvas'), SP.data, SP.picked, note); });
+  spFontsReady().then(function () { if (SP.data && $('spCanvas')) drawSalesReport($('spCanvas'), SP.data, SP.picked); });
 }
 function outputSalesPdf() {
   if (!SP.data || !SP.picked.length) return;
   var b = $('spOut'); b.disabled = true; $('spErr').textContent = '';
-  var cv = $('spCanvas'), note = $('spNote').value.trim(), d = SP.data, picked = SP.picked.slice();
+  var cv = $('spCanvas'), d = SP.data, picked = SP.picked.slice();
   Promise.all([ensureLib('jspdf'), spFontsReady()]).then(function () {
-    drawSalesReport(cv, d, picked, note);
+    drawSalesReport(cv, d, picked);
     var pdf = new jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
     pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
     pdf.save('QR読み取り実績_' + safeName(d.genre || '全ジャンル') + '_' + ymd(new Date()) + '.pdf');
