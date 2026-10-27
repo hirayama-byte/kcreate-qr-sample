@@ -1856,7 +1856,7 @@ function drawSalesReport(cv, d, codes) {
   g.fillText('ジャンル：' + (d.genre || '全ジャンル') + '　上位 ' + items.length + ' 件 ／ 直近' + (d.months || 3) + 'か月（' + ymJa(d.from) + ' 〜 ' + fmtYmd(d.to) + '）', x0, mm(31));
   g.textAlign = 'right';
   g.font = spFont(9, 400); g.fillStyle = '#64748b';
-  g.fillText('情報誌くれよん ／ 株式会社ケイクリエイト', x1, mm(27.5));
+  g.fillText('情報誌くれよん', x1, mm(27.5));
   g.fillText('出力日 ' + fmtYmd(ymd(new Date())), x1, mm(32));
   g.fillStyle = '#e2e8f0'; g.fillRect(x0, mm(36), cw, mm(0.4));
   // カード（2列。段数は件数から。6件以下は3段で大きめ）
