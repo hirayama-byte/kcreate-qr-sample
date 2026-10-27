@@ -1144,7 +1144,8 @@ var WORKER_TOKEN = 'test-token';
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
-var S = { me: null, genres: [], divisions: [], baseUrl: '', list: [], folder: 'all', sort: 'created', desc: true, chart: null, rankMode: 'battle', rankMeta: null, bootList: false };
+var S = { me: null, genres: [], divisions: [], baseUrl: '', list: [], folder: 'all', sort: 'created', desc: true, chart: null, rankMode: 'battle', rankMeta: null, bootList: false, page: 1 };
+var PAGE = 200; // 一覧は200件ずつ表示（「さらに表示」で次の200件）
 // 重いライブラリは必要になったときに読み込む（最初の表示を速くするため）
 var LIBS = { Chart: 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js', XLSX: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js' };
 var libP = {};
@@ -1292,7 +1293,7 @@ function showTab(tab) {
 
 // ---------- 一覧 ----------
 function applyList(list) {
-  S.list = list;
+  S.list = list; S.page = 1;
   $('countWarn').classList.toggle('hide', !list.some(function (q) { return q.last30 == null; }));
   renderFolders(); renderList();
 }
@@ -1314,17 +1315,24 @@ function renderFolders() {
 function btnF(key, label, n) { return '<button data-f="' + esc(key) + '" class="' + (S.folder === key ? 'on' : '') + '"><span>' + esc(label) + '</span><span class="n">' + n + '</span></button>'; }
 $('folders').onclick = function (e) {
   var b = e.target.closest('button'); if (!b) return;
-  S.folder = b.dataset.f;
+  S.folder = b.dataset.f; S.page = 1;
   if ($('list').classList.contains('hide')) { showTab('list'); return; }
   renderFolders(); renderList();
 };
-['q', 'qField', 'qGenre', 'qDiv'].forEach(function (id) { $(id).addEventListener('input', renderList); });
+['q', 'qField', 'qGenre', 'qDiv'].forEach(function (id) { $(id).addEventListener('input', function () { S.page = 1; renderList(); }); });
 document.querySelector('#list thead').onclick = function (e) {
   var th = e.target.closest('th'); if (!th) return;
   var k = th.dataset.sort;
-  if (S.sort === k) S.desc = !S.desc; else { S.sort = k; S.desc = (k === 'last30' || k === 'total' || k === 'created' || k === 'battleStart'); }
+  S.page = 1;
+  if (S.sort === k) S.desc = !S.desc; else { S.sort = k; S.desc = (k === 'last30' || k === 'total' || k === 'created' || k === 'battleStart' || k === 'qid'); }
   renderList();
 };
+// ID の比較: 番号（数字）で比べ、同じなら英字で比べる
+function cmpQid(a, b) {
+  var ma = /^([A-Z]*)(\d+)$/.exec(a.qid || ''), mb = /^([A-Z]*)(\d+)$/.exec(b.qid || '');
+  var na = ma ? +ma[2] : -1, nb = mb ? +mb[2] : -1;
+  return na - nb || String(ma ? ma[1] : '').localeCompare(String(mb ? mb[1] : ''));
+}
 function inFolder() { return S.list.filter(function (q) { return S.folder === 'all' || q.ownerEmail === S.folder; }); }
 function filtered() {
   var kw = $('q').value.trim().toLowerCase(), f = $('qField').value, g = $('qGenre').value, dv = $('qDiv').value;
@@ -1337,7 +1345,8 @@ function filtered() {
   }).sort(function (a, b) {
     var x = a[S.sort], y = b[S.sort];
     var num = S.sort === 'last30' || S.sort === 'total';
-    var c = num ? (x == null ? -1 : x) - (y == null ? -1 : y) : String(x).localeCompare(String(y), 'ja');
+    var c = S.sort === 'qid' ? cmpQid(a, b) : num ? (x == null ? -1 : x) - (y == null ? -1 : y) : String(x).localeCompare(String(y), 'ja');
+    if (c === 0 && S.sort !== 'qid') c = cmpQid(a, b); // 同じ値なら ID の番号が大きい方を新しいとみなす
     return S.desc ? -c : c;
   });
 }
@@ -1349,20 +1358,23 @@ function renderList() {
   var sumOf = function (k) { return base.some(function (q) { return q[k] == null; }) ? null : base.reduce(function (s, q) { return s + q[k]; }, 0); };
   $('k30').innerHTML = fmt(sumOf('last30')) + '<small>回</small>';
   $('kAll').innerHTML = fmt(sumOf('total')) + '<small>回</small>';
-  $('count').textContent = list.length + ' / ' + base.length;
+  var shown = list.slice(0, S.page * PAGE);
+  $('count').textContent = (shown.length < list.length ? shown.length + '件を表示 / ' : '') + list.length + ' / ' + base.length;
   document.querySelectorAll('#list th').forEach(function (th) {
     th.textContent = th.textContent.replace(/[ ▲▼]+$/, '') + (th.dataset.sort === S.sort ? (S.desc ? ' ▼' : ' ▲') : '');
   });
   var max = list.reduce(function (m, q) { return Math.max(m, q.last30); }, 0);
-  $('rows').innerHTML = list.length ? list.map(function (q) {
+  $('rows').innerHTML = (list.length ? shown.map(function (q) {
     return '<tr class="row" data-c="' + esc(q.code) + '"><td class="hide-sm"><span class="code">' + esc(q.qid || '−') + '</span></td>' +
       '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
       '<td>' + (canEdit(q) ? inlineSel(q, 'genre') : tag(q.genre)) + '</td><td>' + (canEdit(q) ? inlineSel(q, 'division') : divTag(q.division)) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
       '<td class="date hide-sm">' + (q.battleStart ? esc(q.battleStart) : '<span class="muted">−</span>') + '</td>' +
       '<td class="num">' + meter(q.last30, max) + '</td><td class="num">' + fmt(q.total) + '</td></tr>';
-  }).join('') : '<tr><td colspan="9" class="loading">該当するQRはありません</td></tr>';
+  }).join('') : '<tr><td colspan="9" class="loading">該当するQRはありません</td></tr>') +
+    (shown.length < list.length ? '<tr><td colspan="9" class="loading"><button class="btn" id="moreBtn">さらに' + Math.min(PAGE, list.length - shown.length) + '件を表示（残り ' + (list.length - shown.length) + '件）</button></td></tr>' : '');
 }
 $('rows').onclick = function (e) {
+  if (e.target.closest('#moreBtn')) { S.page++; renderList(); return; }
   if (e.target.closest('select.inl')) return; // プルダウンの操作では詳細を開かない
   var tr = e.target.closest('tr.row'); if (!tr) return;
   openDetail(S.list.filter(function (q) { return q.code === tr.dataset.c; })[0]);
