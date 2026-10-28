@@ -854,7 +854,7 @@ function init() {
     genres: genres_(),
     divisions: divisions_(),
     guideUrl: guideUrl_(),
-    members: isAdmin_(email) ? membersList_() : [],
+    members: membersList_(), // 担当者の変更は全員できる（2026-10-28）ので、全員にメンバー一覧を渡す
     baseUrl: setting_('base_url') || BASE_URL,
     fallbackUrl: setting_('fallback_url') || 'https://www.k-create.co.jp/'
   };
@@ -941,14 +941,28 @@ function updateQr(code, f) {
   if (!canEdit_(q, myEmail_())) throw new Error('このQRを変更できるのは作成者（' + q.ownerName + '）と管理者だけです');
   if (v.url !== q.url) putLink_(code, v.url, !!q.deleted);
   if (f.ownerEmail !== undefined && String(f.ownerEmail).toLowerCase() !== q.ownerEmail) {
-    if (!isAdmin_(myEmail_())) throw new Error('担当者を変えられるのは管理者だけです');
-    var o = checkMember_(f.ownerEmail);
+    var o = checkMember_(f.ownerEmail); // 担当者の変更は作成者・管理者とも可（他人のQRは changeOwner で）
     sh.getRange(row, 5, 1, 2).setValues([[o.email, o.name]]); // IDはそのまま（発行時の担当者の英字が残る）
   }
   sh.getRange(row, 2, 1, 3).setValues([[v.name, v.genre, v.url]]);
   sh.getRange(row, 8).setValue(now_());
   sh.getRange(row, 11).setValue(v.battleStart);
   sh.getRange(row, 13).setValue(v.division);
+  return true;
+}
+
+// 担当者の引き継ぎ（担当者だけを変える）。名前を登録したメンバーなら、他人のQRでも変えられる（2026-10-28 オーナー決定）。ID はそのまま
+function changeOwner(code, ownerEmail) {
+  var me = myEmail_();
+  if (!memberMap_()[me]) throw new Error('先に名前を登録してください');
+  var o = checkMember_(ownerEmail);
+  var sh = sheet_('qr');
+  var row = findQrRow_(code);
+  var q = qrObj_(sh.getRange(row, 1, 1, QR_HEAD.length).getValues()[0]);
+  if (q.deleted) throw new Error('ゴミ箱のQRは変えられません');
+  if (o.email === q.ownerEmail) return true;
+  sh.getRange(row, 5, 1, 2).setValues([[o.email, o.name]]);
+  sh.getRange(row, 8).setValue(now_());
   return true;
 }
 
@@ -1521,13 +1535,14 @@ function openDetail(q) {
         '<label>名称</label><input type="text" id="eName" value="' + esc(q.name) + '">' +
         '<label>QRバトル集計開始日</label><div><input type="date" id="eBattle"><div class="hint" id="eBattleHint"></div></div>' +
         '<label>QRバトル エントリー部門</label><select id="eDivision"><option value="">（エントリーしない）</option>' + divOptions(q.division) + '</select>' +
-        (S.me.isAdmin ? '<label>担当者</label><div><select id="eOwner">' + ownerOptions(q.ownerEmail, q.ownerName) + '</select><div class="hint">担当を引き継ぐときに変えます。ID はそのままです。</div></div>' : '') +
+        '<label>担当者</label><div><select id="eOwner">' + ownerOptions(q.ownerEmail, q.ownerName) + '</select><div class="hint">担当を引き継ぐときに変えます。ID はそのままです。</div></div>' +
         '<label>ジャンル</label><select id="eGenre">' + genreOptions(q.genre) + '</select>' +
         '<label>飛び先URL</label><input type="url" id="eUrl" value="' + esc(q.url) + '">' +
         '<span></span><div style="display:flex;gap:8px"><button class="btn primary" id="eSave">保存</button><span style="flex:1"></span><button class="btn danger" id="eDel">削除</button></div>' +
       '</div><div class="err" id="eErr"></div>' +
       '<p class="note">飛び先を変えても、印刷済みのQRはそのまま使えます。</p></div>'
-      : '<div class="edit"><p class="note" style="margin:0">このQRを変更・削除できるのは作成者（' + esc(q.ownerName) + '）と管理者です。</p></div>');
+      : '<div class="edit"><h3>担当者を変更</h3><div class="form"><label>担当者</label><div style="display:flex;gap:8px;align-items:center;flex-wrap:wrap"><select id="eOwner2">' + ownerOptions(q.ownerEmail, q.ownerName) + '</select><button class="btn primary" id="eOwnerSave">担当者を変更</button></div></div><div class="err" id="eErr"></div>' +
+        '<p class="note">担当者の引き継ぎは誰でもできます（ID はそのまま）。名称・飛び先・ジャンルの変更と削除は、作成者（' + esc(q.ownerName) + '）と管理者だけです。</p></div>');
   $('dQr').appendChild(qrPanel(q));
   $('modal').classList.add('on');
   var reload = function () { loadStats(q.code); };
@@ -1540,6 +1555,16 @@ function openDetail(q) {
   });
   $('dReport').onclick = function () { openQrReport(q); };
   reload();
+  if (!edit) {
+    $('eOwnerSave').onclick = function () {
+      var b = this, v = $('eOwner2').value; b.disabled = true; $('eErr').textContent = '';
+      if (v === q.ownerEmail) { b.disabled = false; return; }
+      var nm = $('eOwner2').selectedOptions[0].textContent;
+      if (!confirm('「' + q.name + '」の担当者を ' + nm + ' に変更します。よろしいですか？')) { b.disabled = false; return; }
+      call('changeOwner', q.code, v).then(function () { toast('担当者を「' + nm + '」に変更しました'); closeModal(); loadList(); })
+        .catch(function (e) { $('eErr').textContent = e.message; b.disabled = false; });
+    };
+  }
   if (edit) {
     bindBattle($('eName'), $('eBattle'), $('eBattleHint'), q.battleStart);
     $('eSave').onclick = function () {
@@ -1547,7 +1572,7 @@ function openDetail(q) {
       var url = $('eUrl').value.trim();
       if (url !== q.url && !confirm('飛び先URLを変更します。印刷済みのQRも新しい飛び先に移動します。よろしいですか？')) { b.disabled = false; return; }
       var payload = { name: $('eName').value, genre: $('eGenre').value, url: url, battleStart: $('eBattle').value, division: $('eDivision').value };
-      if (S.me.isAdmin && $('eOwner')) payload.ownerEmail = $('eOwner').value;
+      if ($('eOwner')) payload.ownerEmail = $('eOwner').value;
       call('updateQr', q.code, payload)
         .then(function () { toast('保存しました'); closeModal(); loadList(); })
         .catch(function (e) { $('eErr').textContent = e.message; b.disabled = false; });
