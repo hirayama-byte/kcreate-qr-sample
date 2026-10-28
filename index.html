@@ -90,6 +90,8 @@
   .kpi .v small { font-size: 12px; color: var(--faint); margin-left: 4px; font-family: "Noto Sans JP", sans-serif; }
 
   .bar { display: flex; flex-wrap: wrap; gap: 8px; align-items: center; padding: 14px 18px; border-bottom: 1px solid var(--line); }
+  .bar .sp { flex: 1; }
+  .bar.sub { padding-top: 10px; background: #fafbfd; }
   .search { position: relative; flex: 1; min-width: 180px; }
   .search svg { position: absolute; left: 11px; top: 10px; width: 16px; height: 16px; color: var(--faint); }
   .search input { width: 100%; padding-left: 34px; }
@@ -171,6 +173,20 @@
   .medal.m1 { background: #fef3c7; color: #b45309; }
   .medal.m2 { background: #e2e8f0; color: #475569; }
   .medal.m3 { background: #fde7d9; color: #c2410c; }
+
+  /* ランキングの参考値（1か月平均・上位層・中間層・低層） */
+  .rstats { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
+  .rstats .lbl { white-space: nowrap; }
+  .rstats .chip { display: inline-flex; align-items: baseline; gap: 4px; background: #f8fafc; border: 1px solid var(--line); border-radius: 999px; padding: 3px 10px; white-space: nowrap; }
+  .rstats .chip b { font-family: var(--mono); font-weight: 500; color: var(--text); font-size: 13px; }
+  .rstats .chip.top { background: #fffbeb; border-color: #fde68a; } .rstats .chip.top b { color: #b45309; }
+  .rstats .chip.mid { background: #eff6ff; border-color: #bfdbfe; } .rstats .chip.mid b { color: #1d4ed8; }
+  .rstats .chip.low { background: #f1f5f9; } .rstats .chip.low b { color: #475569; }
+
+  /* QR個別レポート */
+  .qrep { padding: 18px 22px; }
+  .qrep .sp-prevhead { margin-bottom: 12px; }
+  .qrep .sp-paper canvas { max-height: none; }
 
   /* 営業ツールPDF */
   .sales { display: grid; grid-template-columns: 380px minmax(0, 1fr); }
@@ -342,9 +358,12 @@
             <select id="rDiv"><option value="">部門：すべて</option></select>
             <select id="rGenre"><option value="">ジャンル：すべて</option></select>
             <span class="muted" id="rInfo" style="font-size:12px"></span>
-            <span class="sp"></span>
+          </div>
+          <div class="bar sub">
             <button class="btn primary" id="rPdf" title="ジャンルの読み取り上位を、直近3か月のグラフつきで A4 縦1枚の PDF に"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l5 5v15H6zM14 2v6h6M9 13h6M9 17h6"/></svg>営業ツールPDF</button>
-          <button class="btn" id="rXlsx" title="エントリーシートの形で Excel に書き出す"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M6 11l6 6 6-6M4 21h16"/></svg>Excel出力</button>
+          <span class="rstats hide" id="rStats"></span>
+            <span class="sp"></span>
+            <button class="btn" id="rXlsx" title="エントリーシートの形で Excel に書き出す"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3v12M6 11l6 6 6-6M4 21h16"/></svg>Excel出力</button>
           </div>
           <div class="tbl">
             <table class="rank">
@@ -1024,6 +1043,28 @@ function getSalesReport(genre, months, limit) {
   return { genre: genre, from: from, to: to, months: months, days: days, items: items, candidates: all.length };
 }
 
+// ---------- QR個別レポート ----------
+// 1つのQRの直近 days 日（今日まで）の日別回数と、同じジャンルの中での位置（読み取り1回以上のQRの件数・順位・平均・最大）。累計 total も
+function getQrReport(code, days) {
+  days = Math.min(Math.max(Math.round(+days) || 90, 7), 366);
+  var sh = sheet_('qr'), row = findQrRow_(code);
+  var q = qrObj_(sh.getRange(row, 1, 1, QR_HEAD.length).getValues()[0]);
+  var members = memberMap_();
+  q.ownerName = members[q.ownerEmail] || q.ownerName || q.ownerEmail;
+  var to = ymd_(new Date()), from = addDays_(to, -(days - 1));
+  var t = totalsMany_([[from, to], ['0000-00-00', '9999-99-99']]);
+  var c = worker_('get', '/api/daily?code=' + code + '&from=' + from + '&to=' + to);
+  var list = [];
+  for (var i = 0; i < days; i++) { var k = addDays_(from, i); list.push({ date: k, count: c[k] || 0 }); }
+  var mine = t[0][code] || 0;
+  var peers = rows_('qr').map(qrObj_).filter(function (x) { return !x.deleted && x.genre === q.genre && (t[0][x.code] || 0) > 0; })
+    .map(function (x) { return t[0][x.code]; }).sort(function (a, b) { return b - a; });
+  var rank = mine > 0 ? peers.filter(function (v) { return v > mine; }).length + 1 : 0;
+  var avg = peers.length ? Math.round(peers.reduce(function (s, v) { return s + v; }, 0) / peers.length) : 0;
+  return { q: q, from: from, to: to, days: list, periodTotal: mine, total: t[1][code] || 0,
+           peers: { genre: q.genre, n: peers.length, rank: rank, avg: avg, max: peers[0] || 0 } };
+}
+
 // ---------- QRバトル ----------
 // 日付の足し算（yyyy-MM-dd のまま。月をまたいで日が無いときは月末に丸める。例: 01-31 +1か月 → 02-28）
 function addMonths_(s, n) {
@@ -1469,6 +1510,7 @@ function openDetail(q) {
       '<div class="range">' +
         '<input type="date" id="dFrom" value="' + ymd(from) + '"><span class="muted">〜</span><input type="date" id="dTo" value="' + ymd(today) + '">' +
         '<div class="seg"><button data-p="7">7D</button><button data-p="30">30D</button><button data-p="90">90D</button><button data-p="365">1Y</button></div>' +
+        '<button class="btn" id="dReport" title="直近90日の日別グラフと文章の分析を A4 横1枚の PDF に"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><path d="M6 2h9l5 5v15H6zM14 2v6h6M9 13h6M9 17h6"/></svg>レポートPDF</button>' +
       '</div>' +
       '<div class="stats"><div class="stat"><span>期間の合計</span><b id="dSum">-</b></div><div class="stat"><span>1日平均</span><b id="dAvg">-</b></div><div class="stat"><span>累計</span><b>' + fmt(q.total) + '</b></div></div>' +
       '<div class="chartwrap"><canvas id="dChart"></canvas></div>' +
@@ -1496,6 +1538,7 @@ function openDetail(q) {
       $('dFrom').value = ymd(new Date(t.getTime() - (Number(b.dataset.p) - 1) * 86400000)); reload();
     };
   });
+  $('dReport').onclick = function () { openQrReport(q); };
   reload();
   if (edit) {
     bindBattle($('eName'), $('eBattle'), $('eBattleHint'), q.battleStart);
@@ -1686,7 +1729,7 @@ function loadRank() {
   var v = $('rPeriod').value, t = new Date();
   $('crumb').textContent = '/ ' + $('rPeriod').selectedOptions[0].textContent;
   $('rRows').innerHTML = '<tr><td colspan="10" class="loading">集計中…</td></tr>';
-  $('rInfo').textContent = '';
+  $('rInfo').textContent = ''; $('rStats').classList.add('hide');
   var battle = /^battle:(\d{4}-\d{2})$/.exec(v);
   S.rankMode = battle ? 'battle' : 'period';
   $('rXlsx').classList.toggle('hide', !battle);
@@ -1706,12 +1749,31 @@ function rankFiltered() {
   var g = $('rGenre').value, d = $('rDiv').value;
   return (S.rank || []).filter(function (q) { return (!g || q.genre === g) && (!d || q.division === d); });
 }
+// 参考値: 読み取りが1回以上あるQR（開始前は除く）の1か月あたりの平均と、回数順に3等分した上位層・中間層・低層の平均 → {n, avg, top, mid, low}（層は3件未満なら null）
+function rankBenchmark(list) {
+  var c = list.filter(function (q) { return q.count > 0 && !q.notStarted; }).map(function (q) { return q.count; }).sort(function (a, b) { return b - a; });
+  var mean = function (a) { return a.length ? Math.round(a.reduce(function (s, v) { return s + v; }, 0) / a.length) : null; };
+  var n = c.length, tiers = [[], [], []];
+  c.forEach(function (v, i) { tiers[Math.floor(i * 3 / n)].push(v); });
+  return { n: n, avg: mean(c), top: n >= 3 ? mean(tiers[0]) : null, mid: n >= 3 ? mean(tiers[1]) : null, low: n >= 3 ? mean(tiers[2]) : null };
+}
+function renderBenchmark(all) {
+  var b = rankBenchmark(all), el = $('rStats');
+  el.classList.toggle('hide', !b.n);
+  if (!b.n) { el.innerHTML = ''; return; }
+  var g = $('rGenre').value, dv = $('rDiv').value, scope = [g, dv].filter(String).join('・') || 'すべて';
+  var period = S.rankMode === 'battle' ? '集計1か月' : $('rPeriod').value === 'last30' ? '直近30日' : '1か月';
+  var chip = function (cls, label, v) { return '<span class="chip ' + cls + '" title="' + label + 'の平均読み取り回数（' + period + '）"><span>' + label + '</span><b>' + (v == null ? '−' : fmt(v)) + '</b>回</span>'; };
+  el.innerHTML = '<span class="lbl" title="参考: 表示中のQR（読み取り1回以上）' + b.n + '件の、' + period + 'あたりの平均読み取り回数。上位・中間・低層は回数順に3等分した各層の平均">参考（' + esc(scope) + '・' + b.n + '件）</span>' +
+    chip('', '平均', b.avg) + chip('top', '上位層', b.top) + chip('mid', '中間層', b.mid) + chip('low', '低層', b.low);
+}
 function renderRank() {
   var battle = S.rankMode === 'battle', meta = S.rankMeta;
   $('rHead').innerHTML = '<th>順位</th><th>ID</th><th>名称</th><th>ジャンル</th><th>部門</th><th class="hide-sm">作成者</th>' +
     (battle ? '<th class="hide-sm">集計期間</th><th class="num">期間の読み取り</th><th class="num hide-sm">累計</th>' : '<th class="num">読み取り</th>');
   var all = rankFiltered(), r = all.slice(0, battle ? 100 : 30);
   var max = r.length ? r[0].count : 0;
+  renderBenchmark(all);
   if (battle && meta) {
     $('rInfo').textContent = '集計最終日が ' + ymLabel(meta.ym) + ' のQRを、集計開始日から1か月間の読み取り回数で並べています。対象 ' + all.length + '件' +
       (all.length !== meta.entrants ? '（絞り込み前 ' + meta.entrants + '件）' : '') +
@@ -1912,6 +1974,212 @@ function drawSalesCard(g, q, rank, x, y, w, h, d) {
     // 月の境目に薄い線
     if (i % 4 === 0 && i) { g.strokeStyle = '#e2e8f0'; g.beginPath(); g.moveTo(cx0 + i * slot, cy0); g.lineTo(cx0 + i * slot, cy1); g.stroke(); }
   });
+}
+
+// ---------- QR個別レポート（A4横。直近90日の日別グラフ＋文章の分析） ----------
+// REPORT-LIB-START
+var WD = ['日', '月', '火', '水', '木', '金', '土'];
+function wdOf(s) { return WD[new Date(s + 'T00:00:00Z').getUTCDay()]; }
+function mdOf(s) { return (+s.slice(5, 7)) + '/' + (+s.slice(8, 10)); }
+function sumOf(a) { return a.reduce(function (s, d) { return s + d.count; }, 0); }
+function pctOf(a, b) { return b ? Math.round(a / b * 100) : 0; }
+// 日別の回数から、文章の分析を組み立てる → [{h: 見出し, t: 本文}]
+function qrReportText(r) {
+  var days = r.days, n = days.length, q = r.q, out = [];
+  var sum = sumOf(days), avg = n ? sum / n : 0;
+  var last30 = sumOf(days.slice(-30)), prev30 = sumOf(days.slice(-60, -30)), last7 = sumOf(days.slice(-7)), prev7 = sumOf(days.slice(-14, -7));
+  var bs = q.battleStart && q.battleStart >= r.from && q.battleStart <= r.to ? q.battleStart : '';
+  // 概況
+  var s1 = '直近' + n + '日間（' + mdOf(r.from) + '〜' + mdOf(r.to) + '）の読み取りは合計 ' + fmt(sum) + '回、1日平均 ' + avg.toFixed(1) + '回です。発行からの累計は ' + fmt(r.total) + '回。';
+  if (bs) {
+    var bi = days.findIndex(function (d) { return d.date === bs; }), first7 = sumOf(days.slice(bi, bi + 7)), share = pctOf(first7, sum);
+    s1 += '配布開始日（' + mdOf(bs) + '）からの7日間で ' + fmt(first7) + '回（期間全体の ' + share + '%）を読み取り、' + (share >= 40 ? '配布直後に反響が集中しています。' : '配布後も継続して読まれています。');
+  }
+  out.push({ h: '概況', t: s1 });
+  // 推移
+  var trend = 'flat', s2;
+  if (sum === 0) { s2 = '期間中の読み取りはありませんでした。'; trend = 'none'; }
+  else if (!prev30 && last30) { s2 = '直近30日に読み取りが始まり、' + fmt(last30) + '回を記録しています。'; trend = 'new'; }
+  else {
+    var diff = prev30 ? Math.round((last30 - prev30) / prev30 * 100) : 0;
+    trend = diff >= 15 ? 'up' : diff <= -15 ? 'down' : 'flat';
+    s2 = '直近30日は ' + fmt(last30) + '回で、その前の30日（' + fmt(prev30) + '回）と比べて ' + (diff >= 0 ? '+' + diff : '−' + (-diff)) + '%・' + (trend === 'up' ? '増加傾向' : trend === 'down' ? '減少傾向' : 'ほぼ横ばい') + 'です。';
+    s2 += '直近7日は ' + fmt(last7) + '回（その前の7日 ' + fmt(prev7) + '回）。';
+  }
+  out.push({ h: '推移', t: s2 });
+  // ピーク
+  if (sum > 0) {
+    var peak = days.reduce(function (m, d) { return d.count > m.count ? d : m; }, days[0]);
+    var active = days.filter(function (d) { return d.count > 0; }).length;
+    var s3 = '最も多く読まれた日は ' + mdOf(peak.date) + '（' + wdOf(peak.date) + '）の ' + fmt(peak.count) + '回';
+    if (bs) { var dn = Math.round((new Date(peak.date + 'T00:00:00Z') - new Date(bs + 'T00:00:00Z')) / 86400000); s3 += dn >= 0 ? '（配布開始から ' + (dn + 1) + '日目）' : '（配布開始前）'; }
+    s3 += '。読み取りがあった日は ' + active + '日／' + n + '日です。';
+    out.push({ h: 'ピーク', t: s3 });
+  }
+  // 曜日の傾向
+  if (sum >= 20) {
+    var wd = [0, 0, 0, 0, 0, 0, 0], wn = [0, 0, 0, 0, 0, 0, 0];
+    days.forEach(function (d) { var w = new Date(d.date + 'T00:00:00Z').getUTCDay(); wd[w] += d.count; wn[w]++; });
+    var wavg = wd.map(function (v, i) { return wn[i] ? v / wn[i] : 0; });
+    var weekday = (wavg[1] + wavg[2] + wavg[3] + wavg[4] + wavg[5]) / 5, weekend = (wavg[0] + wavg[6]) / 2;
+    var best = wavg.indexOf(Math.max.apply(null, wavg));
+    var s4 = weekend >= weekday * 1.3 ? '土日の読み取りが平日の約' + (weekday ? (weekend / weekday).toFixed(1) : '−') + '倍と多く、休日に見られる傾向です' :
+             weekday >= weekend * 1.3 ? '平日のほうが多く（1日平均 ' + weekday.toFixed(1) + '回・土日 ' + weekend.toFixed(1) + '回）、仕事や家事の合間に見られる傾向です' :
+             '曜日による差は小さく、平日・土日とも安定して読まれています';
+    s4 += '。最も多い曜日は' + WD[best] + '曜（1日平均 ' + wavg[best].toFixed(1) + '回）。';
+    out.push({ h: '曜日の傾向', t: s4 });
+  } else out.push({ h: '曜日の傾向', t: '読み取り回数が少ないため、曜日の傾向はまだ判断できません。' });
+  // ジャンル内の位置
+  var p = r.peers || {};
+  if (p.n >= 3 && sum > 0) {
+    var times = p.avg ? sum / p.avg : 0;
+    out.push({ h: 'ジャンル内の位置', t: '同じジャンル「' + p.genre + '」で読み取りのある ' + p.n + '件の中で ' + p.rank + '位（上位 ' + Math.max(1, Math.round(p.rank / p.n * 100)) + '%）。ジャンル平均 ' + fmt(p.avg) + '回の ' + times.toFixed(1) + '倍で、' + (times >= 1.5 ? '平均を大きく上回る反響です。' : times <= 0.6 ? '平均を下回っています。' : 'ほぼ平均並みです。') });
+  } else if (sum > 0) out.push({ h: 'ジャンル内の位置', t: '同じジャンル「' + (p.genre || q.genre) + '」で比べられるQRがまだ少ないため、ジャンル内の順位は省略しています。' });
+  // 所見
+  var s6 = sum < 5 ? '読み取りはまだ少ない状態です。QRの掲載位置・大きさの見直しや、「QRを読むと○○」といった誘導文の追加をおすすめします。' :
+           trend === 'up' || trend === 'new' ? '反響が伸びている時期です。継続掲載で勢いを保つのが効果的です。' :
+           trend === 'down' ? '配布から時間がたつと読み取りは落ち着く傾向があります。次号での再掲載や、QRの飛び先（キャンペーン・新着情報）の更新で再び反響を作れます。' :
+           '安定して読まれています。掲載面の拡大やQRの飛び先の見直しで、さらに反響を伸ばせる余地があります。';
+  out.push({ h: '所見', t: s6 });
+  return out;
+}
+// REPORT-LIB-END
+var QR = { data: null, q: null };
+var QW = 3508, QH = 2480; // A4 横・300dpi
+function qmm(v) { return v * QW / 297; }
+function qFont(ptSize, weight) { return (weight || 400) + ' ' + Math.round(ptSize * QW / 297 * 25.4 / 72) + 'px "Noto Sans JP", "Yu Gothic UI", "Hiragino Sans", "Meiryo", sans-serif'; }
+// 文字をはみ出さないように折り返す。日本語は1文字ずつ、英数字や「-51%」「10/28」のような半角の並びはひとかたまり。行頭に句読点・閉じかっこが来ないよう前の行に送る
+function wrapLines(g, text, maxW) {
+  var lines = [], cur = '', NO_HEAD = '、。，．）」』】〕!?！？・ー％%';
+  var tokens = String(text || '').match(/[A-Za-z0-9+\-−.,%\/:]+|[\s\S]/g) || [];
+  tokens.forEach(function (tk) {
+    var next = cur + tk;
+    if (g.measureText(next).width > maxW && cur) {
+      if (NO_HEAD.indexOf(tk) >= 0) { lines.push(cur + tk); cur = ''; return; }
+      lines.push(cur); cur = tk;
+    } else if (!cur && NO_HEAD.indexOf(tk) >= 0 && lines.length) lines[lines.length - 1] += tk; // 行頭の句読点は前の行の末尾へ
+    else cur = next;
+  });
+  if (cur) lines.push(cur);
+  return lines;
+}
+function openQrReport(q) {
+  QR.q = q; QR.data = null;
+  if (S.chart) { S.chart.destroy(); S.chart = null; }
+  $('mBody').innerHTML =
+    '<div class="mhead"><h2>読み取りレポート（A4横）</h2><div class="meta"><span class="code">' + esc(q.qid || '') + '</span><b>' + esc(q.name) + '</b><span>直近90日の日別グラフと文章の分析を A4 横1枚にまとめます。</span></div></div>' +
+    '<div class="qrep"><div class="sp-prevhead"><button class="btn" id="qrBack">← 詳細に戻る</button><span class="muted" id="qrInfo">集計中…</span><span class="sp"></span><button class="btn primary" id="qrOut" disabled>PDFを出力</button></div>' +
+    '<div class="sp-paper"><canvas id="qrCanvas" width="' + QW + '" height="' + QH + '"></canvas></div><div class="err" id="qrErr"></div></div>';
+  $('modal').classList.add('on');
+  $('qrBack').onclick = function () { openDetail(q); };
+  $('qrOut').onclick = outputQrReportPdf;
+  Promise.all([call('getQrReport', q.code, 90), spFontsReady()]).then(function (pr) {
+    if (!$('qrCanvas') || QR.q !== q) return;
+    QR.data = pr[0];
+    $('qrInfo').textContent = fmtYmd(QR.data.from) + '〜' + fmtYmd(QR.data.to) + '（90日）';
+    drawQrReport($('qrCanvas'), QR.data);
+    $('qrOut').disabled = false;
+  }).catch(function (e) { if ($('qrErr')) { $('qrErr').textContent = e.message; $('qrInfo').textContent = ''; } });
+}
+function outputQrReportPdf() {
+  if (!QR.data) return;
+  var b = $('qrOut'); b.disabled = true; $('qrErr').textContent = '';
+  var cv = $('qrCanvas'), d = QR.data;
+  ensureLib('jspdf').then(function () {
+    drawQrReport(cv, d);
+    var pdf = new jspdf.jsPDF({ orientation: 'landscape', unit: 'mm', format: 'a4', compress: true });
+    pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 297, 210);
+    pdf.save('QRレポート_' + safeName(d.q.name) + '_' + (d.q.qid || d.q.code) + '_' + ymd(new Date()) + '.pdf');
+    toast('PDF を書き出しました');
+  }).catch(function (e) { if ($('qrErr')) $('qrErr').textContent = e.message; }).then(function () { if ($('qrOut')) $('qrOut').disabled = false; });
+}
+function drawQrReport(cv, r) {
+  var g = cv.getContext('2d'), W = cv.width, H = cv.height, q = r.q, days = r.days, n = days.length;
+  g.setTransform(1, 0, 0, 1, 0, 0); g.fillStyle = '#fff'; g.fillRect(0, 0, W, H); g.textBaseline = 'alphabetic';
+  var M = qmm(12), x0 = M, x1 = W - M, t = salesTitle(q);
+  var sum = sumOf(days), avg = n ? sum / n : 0, peak = days.reduce(function (m, d) { return d.count > m.count ? d : m; }, days[0]);
+  // ヘッダー
+  g.fillStyle = '#2563eb'; g.fillRect(x0, qmm(10), qmm(12), qmm(1.3));
+  g.fillStyle = '#0f172a'; g.font = qFont(16, 700); g.textAlign = 'left'; g.fillText('QRコード 読み取りレポート', x0, qmm(20));
+  g.textAlign = 'right'; g.font = qFont(9, 400); g.fillStyle = '#64748b';
+  g.fillText('情報誌くれよん', x1, qmm(16)); g.fillText('出力日 ' + fmtYmd(ymd(new Date())), x1, qmm(20.5));
+  g.textAlign = 'left'; g.fillStyle = '#0f172a'; g.font = qFont(15, 700); g.fillText(fitText(g, t.client, qmm(170)), x0, qmm(31));
+  g.font = qFont(9, 400); g.fillStyle = '#475569';
+  g.fillText(fitText(g, [t.sub, 'ジャンル：' + q.genre, 'ID：' + (q.qid || '−'), '担当：' + q.ownerName].filter(Boolean).join('　｜　'), x1 - x0 - qmm(24)), x0, qmm(37));
+  g.font = qFont(8, 400); g.fillStyle = '#94a3b8'; g.fillText(fitText(g, '飛び先：' + q.url + '　（QRの中身 ' + shortUrl(q.code) + '）', x1 - x0 - qmm(24)), x0, qmm(42));
+  // 右上: QR 画像（出力日の下）
+  var qs = qmm(19); g.drawImage(drawQr(shortUrl(q.code), 400), x1 - qs, qmm(23.5), qs, qs);
+  g.fillStyle = '#e2e8f0'; g.fillRect(x0, qmm(45), x1 - x0, qmm(0.4));
+  // 左: 数字4つ
+  var L0 = x0, L1 = qmm(196), R0 = qmm(203), R1 = x1;
+  var kp = [['90日合計', fmt(sum) + ' 回'], ['1日平均', avg.toFixed(1) + ' 回'], ['最多日', sum ? mdOf(peak.date) + '（' + wdOf(peak.date) + '）' + fmt(peak.count) + ' 回' : '−'], ['累計', fmt(r.total) + ' 回']];
+  var kw = (L1 - L0 - qmm(4) * 3) / 4, ky = qmm(50), kh = qmm(19);
+  kp.forEach(function (k, i) {
+    var kx = L0 + i * (kw + qmm(4));
+    g.fillStyle = '#f8fafc'; g.strokeStyle = '#e2e8f0'; g.lineWidth = qmm(0.3); rrect(g, kx, ky, kw, kh, qmm(2)); g.fill(); g.stroke();
+    g.fillStyle = '#64748b'; g.font = qFont(7.5, 400); g.fillText(k[0], kx + qmm(4), ky + qmm(6.5));
+    g.fillStyle = '#0f172a'; g.font = qFont(i === 2 ? 11 : 14, 700); g.fillText(fitText(g, k[1], kw - qmm(8)), kx + qmm(4), ky + qmm(15));
+  });
+  // 左: 日別グラフ（90本＋7日移動平均の線）
+  var cx0 = L0 + qmm(8), cx1 = L1 - qmm(2), cy0 = qmm(80), cy1 = qmm(176);
+  var maxv = Math.max(1, peak.count), slot = (cx1 - cx0) / n, bw = slot * 0.7;
+  g.fillStyle = '#0f172a'; g.font = qFont(9.5, 700); g.fillText('日別の読み取り回数（直近90日）', L0, qmm(75));
+  g.textAlign = 'right'; g.font = qFont(7.5, 400); g.fillStyle = '#64748b'; g.fillText('■ 読み取り回数　― 7日移動平均', L1 - qmm(2), qmm(75)); g.textAlign = 'left';
+  // 目盛り（5本）
+  var step = Math.max(1, Math.ceil(maxv / 4));
+  for (var v = 0; v <= maxv; v += step) {
+    var gy = cy1 - (cy1 - cy0) * v / maxv;
+    g.strokeStyle = v ? '#eef2f7' : '#cbd5e1'; g.lineWidth = qmm(0.25); g.beginPath(); g.moveTo(cx0, gy); g.lineTo(cx1, gy); g.stroke();
+    g.fillStyle = '#94a3b8'; g.font = qFont(6.5, 400); g.textAlign = 'right'; g.fillText(fmt(v), cx0 - qmm(2), gy + qmm(1));
+  }
+  g.textAlign = 'center';
+  days.forEach(function (d, i) {
+    var bx = cx0 + i * slot + (slot - bw) / 2, bh = (cy1 - cy0) * d.count / maxv;
+    if (d.count) { var grad = g.createLinearGradient(0, cy1 - bh, 0, cy1); grad.addColorStop(0, '#3b82f6'); grad.addColorStop(1, '#93c5fd'); g.fillStyle = grad; rrect(g, bx, cy1 - bh, bw, bh, qmm(0.4)); g.fill(); }
+    // 月の境目
+    if (d.date.slice(8) === '01' && i) { g.strokeStyle = '#cbd5e1'; g.lineWidth = qmm(0.3); g.setLineDash([qmm(1), qmm(1)]); g.beginPath(); g.moveTo(cx0 + i * slot, cy0 - qmm(2)); g.lineTo(cx0 + i * slot, cy1); g.stroke(); g.setLineDash([]);
+      g.fillStyle = '#64748b'; g.font = qFont(7, 500); g.textAlign = 'left'; g.fillText((+d.date.slice(5, 7)) + '月', cx0 + i * slot + qmm(1.2), cy0 - qmm(0.5)); g.textAlign = 'center'; }
+    if (i % 7 === 0 || i === n - 1) { g.fillStyle = '#94a3b8'; g.font = qFont(6.5, 400); g.fillText(mdOf(d.date), bx + bw / 2, cy1 + qmm(4)); }
+  });
+  // 7日移動平均
+  g.strokeStyle = '#1e40af'; g.lineWidth = qmm(0.5); g.beginPath();
+  days.forEach(function (d, i) {
+    var sl = days.slice(Math.max(0, i - 6), i + 1), ma = sumOf(sl) / sl.length;
+    var px = cx0 + i * slot + slot / 2, py = cy1 - (cy1 - cy0) * ma / maxv;
+    if (i) g.lineTo(px, py); else g.moveTo(px, py);
+  });
+  g.stroke();
+  // 最多日の印
+  if (sum) { var pi = days.indexOf(peak), ppx = cx0 + pi * slot + slot / 2, ppy = cy1 - (cy1 - cy0) * peak.count / maxv; g.fillStyle = '#0f172a'; g.font = qFont(7, 700); g.textAlign = 'center'; g.fillText('最多 ' + fmt(peak.count), Math.min(Math.max(ppx, cx0 + qmm(8)), cx1 - qmm(8)), ppy - qmm(2)); }
+  // 配布開始日
+  var bs = q.battleStart;
+  if (bs && bs >= r.from && bs <= r.to) {
+    var bi = days.findIndex(function (d) { return d.date === bs; }), bxp = cx0 + bi * slot;
+    g.strokeStyle = '#dc2626'; g.lineWidth = qmm(0.4); g.setLineDash([qmm(1.5), qmm(1)]); g.beginPath(); g.moveTo(bxp, cy0 + qmm(4)); g.lineTo(bxp, cy1); g.stroke(); g.setLineDash([]);
+    g.fillStyle = '#dc2626'; g.font = qFont(7, 700); g.textAlign = 'left'; g.fillText('配布開始 ' + mdOf(bs), bxp + qmm(1.2), cy0 + qmm(7));
+  }
+  // 右: 分析
+  g.fillStyle = '#f8fafc'; g.strokeStyle = '#e2e8f0'; g.lineWidth = qmm(0.3); rrect(g, R0, qmm(50), R1 - R0, qmm(140), qmm(2.5)); g.fill(); g.stroke();
+  g.fillStyle = '#2563eb'; g.fillRect(R0 + qmm(5), qmm(56.5), qmm(1.2), qmm(5));
+  g.fillStyle = '#0f172a'; g.font = qFont(10.5, 700); g.textAlign = 'left'; g.fillText('読み取り状況の分析', R0 + qmm(8.5), qmm(61));
+  var paras = qrReportText(r), tx = R0 + qmm(5), tw = R1 - R0 - qmm(10), bottom = qmm(186);
+  var fs_ = 8.5;
+  for (; fs_ >= 6.5; fs_ -= 0.5) {
+    var need = qmm(67), lh = qmm(fs_ * 0.56);
+    paras.forEach(function (p) { need += qmm(1.5) + wrapLines(g, (g.font = qFont(fs_, 400), p.t), tw).length * lh + qmm(5); });
+    if (need <= bottom) break;
+  }
+  var ty = qmm(68), lh2 = qmm(fs_ * 0.56);
+  paras.forEach(function (p) {
+    g.font = qFont(fs_ + 0.5, 700); g.fillStyle = '#1e40af'; g.fillText(p.h, tx, ty); ty += qmm(1.5);
+    g.font = qFont(fs_, 400); g.fillStyle = '#334155';
+    wrapLines(g, p.t, tw).forEach(function (ln) { ty += lh2; g.fillText(ln, tx, ty); });
+    ty += qmm(5);
+  });
+  // フッター
+  g.textAlign = 'left'; g.font = qFont(7, 400); g.fillStyle = '#64748b';
+  g.fillText(fitText(g, '※ 読み取り回数＝QRコードが読み取られて飛び先のページへ移動した回数（検索ロボット等のアクセスは除く）。分析の文章は回数の推移から自動で作成しています。', x1 - x0 - qmm(30)), x0, qmm(200));
+  g.textAlign = 'right'; g.fillText('QRコード管理 ／ K-CREATE', x1, qmm(200));
 }
 var spFontP = null;
 function spFontsReady() {
