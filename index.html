@@ -174,6 +174,12 @@
   .medal.m2 { background: #e2e8f0; color: #475569; }
   .medal.m3 { background: #fde7d9; color: #c2410c; }
 
+  /* 一覧の選択ボックスと一括削除 */
+  th.chk, td.chk { width: 34px; padding-left: 14px; padding-right: 0; }
+  td.chk input, th.chk input { width: 15px; height: 15px; margin: 0; vertical-align: middle; cursor: pointer; }
+  td.chk input:disabled { cursor: default; opacity: .35; }
+  #delSel { gap: 6px; }
+
   /* ランキングの参考値（1か月平均・上位層・中間層・低層） */
   .rstats { display: inline-flex; align-items: center; gap: 6px; flex-wrap: wrap; font-size: 12px; color: var(--muted); }
   .rstats .lbl { white-space: nowrap; }
@@ -293,11 +299,13 @@
             </div>
             <select id="qGenre"><option value="">ジャンル：すべて</option></select>
             <select id="qDiv"><option value="">部門：すべて</option></select>
+            <button class="btn danger hide" id="delSel" title="チェックした案件をゴミ箱に入れます（管理者が元に戻せます）"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg><span id="delSelN">0</span>件を削除</button>
             <span class="count" id="count"></span>
           </div>
           <div class="tbl">
             <table>
               <thead><tr>
+                <th class="chk"><input type="checkbox" id="chkAll" title="表示中の、削除できる案件をすべて選択"></th>
                 <th data-sort="qid" class="hide-sm">ID</th>
                 <th data-sort="name">名称</th>
                 <th data-sort="genre">ジャンル</th>
@@ -997,6 +1005,26 @@ function deleteQr(code) {
   return true;
 }
 
+// まとめて削除（一覧のチェック）。全部が削除できる（作成者本人か管理者）ことを先に確かめてから、Worker → シートの順に消す。ゴミ箱から戻せるのは従来どおり
+function deleteQrs(codes) {
+  var email = myEmail_();
+  if (!Array.isArray(codes) || !codes.length) throw new Error('削除するQRを選んでください');
+  if (codes.length > 500) throw new Error('一度に削除できるのは500件までです');
+  var want = {}; codes.forEach(function (c) { want[String(c)] = true; });
+  var rows = rows_('qr'), hit = [], ng = [];
+  rows.forEach(function (r, i) {
+    var q = qrObj_(r);
+    if (!want[q.code] || q.deleted) return;
+    if (!canEdit_(q, email)) ng.push(q.name); else hit.push({ row: i + 2, q: q });
+  });
+  if (ng.length) throw new Error('作成者か管理者だけが削除できます。削除できないQR: ' + ng.slice(0, 5).join('、') + (ng.length > 5 ? ' ほか' + (ng.length - 5) + '件' : ''));
+  if (!hit.length) return { deleted: 0 };
+  for (var k = 0; k < hit.length; k += 200) worker_('post', '/api/links', hit.slice(k, k + 200).map(function (h) { return { code: h.q.code, url: h.q.url, deleted: true }; }));
+  var sh = sheet_('qr'), t = now_();
+  hit.forEach(function (h) { sh.getRange(h.row, 9, 1, 2).setValues([[t, email]]); });
+  return { deleted: hit.length };
+}
+
 function restoreQr(code) {
   if (!isAdmin_(myEmail_())) throw new Error('元に戻せるのは管理者だけです');
   var sh = sheet_('qr');
@@ -1245,7 +1273,7 @@ var WORKER_TOKEN = 'test-token';
 </script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/qrcode-generator/1.4.4/qrcode.min.js"></script>
 <script>
-var S = { me: null, genres: [], divisions: [], baseUrl: '', list: [], folder: 'all', sort: 'created', desc: true, chart: null, rankMode: 'battle', rankMeta: null, bootList: false, page: 1 };
+var S = { me: null, genres: [], divisions: [], baseUrl: '', list: [], folder: 'all', sort: 'created', desc: true, chart: null, rankMode: 'battle', rankMeta: null, bootList: false, page: 1, sel: {} };
 var PAGE = 200; // 一覧は200件ずつ表示（「さらに表示」で次の200件）
 // 重いライブラリは必要になったときに読み込む（最初の表示を速くするため）
 var LIBS = { Chart: 'https://cdnjs.cloudflare.com/ajax/libs/Chart.js/4.4.1/chart.umd.min.js', XLSX: 'https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js', jspdf: 'https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js' };
@@ -1400,9 +1428,9 @@ function applyList(list) {
 }
 function loadList() {
   if (S.bootList) { S.bootList = false; applyList(S.list); return Promise.resolve(); }
-  $('rows').innerHTML = '<tr><td colspan="9" class="loading">読み込み中…</td></tr>';
+  $('rows').innerHTML = '<tr><td colspan="10" class="loading">読み込み中…</td></tr>';
   return call('listQr').then(applyList)
-    .catch(function (e) { $('rows').innerHTML = '<tr><td colspan="9" class="err">' + esc(e.message) + '</td></tr>'; });
+    .catch(function (e) { $('rows').innerHTML = '<tr><td colspan="10" class="err">' + esc(e.message) + '</td></tr>'; });
 }
 function renderFolders() {
   var by = {};
@@ -1422,7 +1450,7 @@ $('folders').onclick = function (e) {
 };
 ['q', 'qField', 'qGenre', 'qDiv'].forEach(function (id) { $(id).addEventListener('input', function () { S.page = 1; renderList(); }); });
 document.querySelector('#list thead').onclick = function (e) {
-  var th = e.target.closest('th'); if (!th) return;
+  var th = e.target.closest('th'); if (!th || !th.dataset.sort) return; // チェック列は並べ替えない
   var k = th.dataset.sort;
   S.page = 1;
   if (S.sort === k) S.desc = !S.desc; else { S.sort = k; S.desc = (k === 'last30' || k === 'total' || k === 'created' || k === 'battleStart' || k === 'qid'); }
@@ -1464,25 +1492,59 @@ function renderList() {
   $('kAll').innerHTML = fmt(sumOf('total')) + '<small>回</small>';
   var shown = list.slice(0, S.page * PAGE);
   $('count').textContent = (shown.length < list.length ? shown.length + '件を表示 / ' : '') + list.length + ' / ' + base.length;
-  document.querySelectorAll('#list th').forEach(function (th) {
+  document.querySelectorAll('#list th[data-sort]').forEach(function (th) { // チェック列（data-sort なし）は書き換えない
     th.textContent = th.textContent.replace(/[ ▲▼]+$/, '') + (th.dataset.sort === S.sort ? (S.desc ? ' ▼' : ' ▲') : '');
   });
   var max = list.reduce(function (m, q) { return Math.max(m, q.last30); }, 0);
   $('rows').innerHTML = (list.length ? shown.map(function (q) {
-    return '<tr class="row" data-c="' + esc(q.code) + '"><td class="hide-sm"><span class="code">' + esc(q.qid || '−') + '</span></td>' +
+    return '<tr class="row" data-c="' + esc(q.code) + '"><td class="chk"><input type="checkbox" class="sel" data-c="' + esc(q.code) + '"' + (canEdit(q) ? (S.sel[q.code] ? ' checked' : '') : ' disabled title="削除できるのは作成者（' + esc(q.ownerName) + '）と管理者だけです"') + '></td><td class="hide-sm"><span class="code">' + esc(q.qid || '−') + '</span></td>' +
       '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
       '<td>' + (canEdit(q) ? inlineSel(q, 'genre') : tag(q.genre)) + '</td><td>' + (canEdit(q) ? inlineSel(q, 'division') : divTag(q.division)) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
       '<td class="date hide-sm">' + (q.battleStart ? esc(q.battleStart) : '<span class="muted">−</span>') + '</td>' +
       '<td class="num">' + meter(q.last30, max) + '</td><td class="num">' + fmt(q.total) + '</td></tr>';
-  }).join('') : '<tr><td colspan="9" class="loading">該当するQRはありません</td></tr>') +
-    (shown.length < list.length ? '<tr><td colspan="9" class="loading"><button class="btn" id="moreBtn">さらに' + Math.min(PAGE, list.length - shown.length) + '件を表示（残り ' + (list.length - shown.length) + '件）</button></td></tr>' : '');
+  }).join('') : '<tr><td colspan="10" class="loading">該当するQRはありません</td></tr>') +
+    (shown.length < list.length ? '<tr><td colspan="10" class="loading"><button class="btn" id="moreBtn">さらに' + Math.min(PAGE, list.length - shown.length) + '件を表示（残り ' + (list.length - shown.length) + '件）</button></td></tr>' : '');
+  updateSel();
 }
 $('rows').onclick = function (e) {
   if (e.target.closest('#moreBtn')) { S.page++; renderList(); return; }
   if (e.target.closest('select.inl')) return; // プルダウンの操作では詳細を開かない
+  if (e.target.closest('input.sel') || e.target.closest('td.chk')) return; // チェックでは詳細を開かない
   var tr = e.target.closest('tr.row'); if (!tr) return;
   openDetail(S.list.filter(function (q) { return q.code === tr.dataset.c; })[0]);
 };
+// ---------- 一覧の選択と一括削除 ----------
+// S.sel = { code: true }。削除できる行（作成者本人・管理者）だけチェックできる
+function selCodes() { return Object.keys(S.sel).filter(function (c) { return S.list.some(function (q) { return q.code === c && canEdit(q); }); }); }
+function updateSel() {
+  var n = selCodes().length;
+  $('delSelN').textContent = n;
+  $('delSel').classList.toggle('hide', !n);
+  var boxes = Array.prototype.slice.call(document.querySelectorAll('#rows input.sel:not(:disabled)'));
+  var all = $('chkAll');
+  all.checked = boxes.length > 0 && boxes.every(function (b) { return b.checked; });
+  all.indeterminate = !all.checked && boxes.some(function (b) { return b.checked; });
+  all.disabled = !boxes.length;
+}
+$('rows').addEventListener('change', function (e) {
+  var cb = e.target.closest('input.sel'); if (!cb) return;
+  if (cb.checked) S.sel[cb.dataset.c] = true; else delete S.sel[cb.dataset.c];
+  updateSel();
+});
+$('chkAll').onchange = function () {
+  var on = this.checked;
+  document.querySelectorAll('#rows input.sel:not(:disabled)').forEach(function (b) { b.checked = on; if (on) S.sel[b.dataset.c] = true; else delete S.sel[b.dataset.c]; });
+  updateSel();
+};
+$('delSel').onclick = function () {
+  var codes = selCodes(); if (!codes.length) return;
+  var names = codes.map(function (c) { return (S.list.filter(function (q) { return q.code === c; })[0] || {}).name; }).filter(Boolean);
+  if (!confirm('チェックした ' + codes.length + ' 件を削除しますか？\n' + names.slice(0, 5).map(function (n) { return '・' + n; }).join('\n') + (names.length > 5 ? '\n…ほか ' + (names.length - 5) + ' 件' : '') + '\n\n削除後に読み取られると、ケイクリエイトのサイトへ移動します。（管理者はゴミ箱から元に戻せます）')) return;
+  var b = this; b.disabled = true;
+  call('deleteQrs', codes).then(function (r) { S.sel = {}; toast(r.deleted + ' 件を削除しました'); return loadList(); })
+    .catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; });
+};
+
 // 一覧のプルダウン（ジャンル・部門）。変えるとすぐ保存
 function inlineSel(q, field) {
   var isDiv = field === 'division', cur = q[field] || '';
