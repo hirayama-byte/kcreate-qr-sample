@@ -166,6 +166,7 @@
   select.inl { height: 26px; font-size: 12px; padding: 0 4px; max-width: 150px; border-radius: 6px; }
   select.inl.div { background: #fef3c7; color: #92400e; border-color: #fde68a; }
   select.inl.none { color: var(--muted); }
+  select.inl.own { background: #f8fafc; max-width: 120px; }
 
   /* ランキング */
   .rank td:first-child { width: 56px; }
@@ -1499,7 +1500,7 @@ function renderList() {
   $('rows').innerHTML = (list.length ? shown.map(function (q) {
     return '<tr class="row" data-c="' + esc(q.code) + '"><td class="chk"><input type="checkbox" class="sel" data-c="' + esc(q.code) + '"' + (canEdit(q) ? (S.sel[q.code] ? ' checked' : '') : ' disabled title="削除できるのは作成者（' + esc(q.ownerName) + '）と管理者だけです"') + '></td><td class="hide-sm"><span class="code">' + esc(q.qid || '−') + '</span></td>' +
       '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
-      '<td>' + (canEdit(q) ? inlineSel(q, 'genre') : tag(q.genre)) + '</td><td>' + (canEdit(q) ? inlineSel(q, 'division') : divTag(q.division)) + '</td><td class="hide-sm">' + who(q.ownerName) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
+      '<td>' + (canEdit(q) ? inlineSel(q, 'genre') : tag(q.genre)) + '</td><td>' + (canEdit(q) ? inlineSel(q, 'division') : divTag(q.division)) + '</td><td class="hide-sm">' + (S.me.name ? inlineSel(q, 'owner') : who(q.ownerName)) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
       '<td class="date hide-sm">' + (q.battleStart ? esc(q.battleStart) : '<span class="muted">−</span>') + '</td>' +
       '<td class="num">' + meter(q.last30, max) + '</td><td class="num">' + fmt(q.total) + '</td></tr>';
   }).join('') : '<tr><td colspan="10" class="loading">該当するQRはありません</td></tr>') +
@@ -1547,15 +1548,23 @@ $('delSel').onclick = function () {
 
 // 一覧のプルダウン（ジャンル・部門）。変えるとすぐ保存
 function inlineSel(q, field) {
-  var isDiv = field === 'division', cur = q[field] || '';
-  var opts = isDiv ? '<option value="">（なし）</option>' + divOptions(cur) : genreOptions(cur);
-  return '<select class="inl' + (isDiv ? ' div' : '') + (isDiv && !cur ? ' none' : '') + '" data-f="' + field + '" data-c="' + esc(q.code) + '" title="' + (isDiv ? 'エントリー部門を変更' : 'ジャンルを変更') + '">' + opts + '</select>';
+  var isDiv = field === 'division', isOwn = field === 'owner', cur = isOwn ? q.ownerEmail : (q[field] || '');
+  var opts = isOwn ? ownerOptions(q.ownerEmail, q.ownerName) : isDiv ? '<option value="">（なし）</option>' + divOptions(cur) : genreOptions(cur);
+  return '<select class="inl' + (isDiv ? ' div' : isOwn ? ' own' : '') + (isDiv && !cur ? ' none' : '') + '" data-f="' + field + '" data-c="' + esc(q.code) + '" title="' + (isOwn ? '担当者を変更（引き継ぎ。ID はそのまま）' : isDiv ? 'エントリー部門を変更' : 'ジャンルを変更') + '">' + opts + '</select>';
 }
 $('rows').addEventListener('change', function (e) {
   var sel = e.target.closest('select.inl'); if (!sel) return;
   var q = S.list.filter(function (x) { return x.code === sel.dataset.c; })[0]; if (!q) return;
-  var field = sel.dataset.f, before = q[field] || '', val = sel.value, f = {}; f[field] = val;
+  var field = sel.dataset.f, val = sel.value;
   sel.disabled = true;
+  if (field === 'owner') { // 担当者の引き継ぎ（誰でも）。フォルダの件数も変わるので描き直す
+    var beforeOwn = q.ownerEmail, nm = sel.selectedOptions[0].textContent;
+    call('changeOwner', q.code, val).then(function () {
+      q.ownerEmail = val; q.ownerName = nm; toast('担当者を「' + nm + '」に変更しました'); renderFolders(); renderList();
+    }).catch(function (e) { sel.value = beforeOwn; toast(e.message); sel.disabled = false; });
+    return;
+  }
+  var before = q[field] || '', f = {}; f[field] = val;
   call('updateQrFields', q.code, f).then(function () {
     q[field] = val; toast((field === 'genre' ? 'ジャンル' : 'エントリー部門') + 'を「' + (val || 'なし') + '」に変更しました');
     sel.classList.toggle('none', field === 'division' && !val);
