@@ -98,6 +98,15 @@
   .count { font-size: 12px; color: var(--muted); font-family: var(--mono); }
 
   .tbl { overflow-x: auto; }
+  /* 一覧タブ（PC）: 検索バーまでを固定し、表だけをスクロールさせる */
+  @media (min-width: 901px) {
+    .main:has(#list:not(.hide)) { height: 100vh; display: flex; flex-direction: column; }
+    .main:has(#list:not(.hide)) > main { flex: 1; min-height: 0; display: flex; flex-direction: column; padding-bottom: 24px; }
+    #list:not(.hide) { flex: 1; min-height: 0; display: flex; flex-direction: column; }
+    #list > .card { flex: 0 1 auto; min-height: 0; display: flex; flex-direction: column; overflow: hidden; }
+    #list .tbl { flex: 0 1 auto; min-height: 0; overflow: auto; }
+    #list thead th { z-index: 1; }
+  }
   table { width: 100%; border-collapse: collapse; }
   th, td { padding: 11px 14px; border-bottom: 1px solid var(--line-2); text-align: left; vertical-align: middle; }
   thead th { font-size: 11px; color: var(--muted); font-weight: 500; letter-spacing: .06em; white-space: nowrap; cursor: pointer; user-select: none;
