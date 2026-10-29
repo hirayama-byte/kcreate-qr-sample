@@ -608,7 +608,7 @@ var TZ = 'Asia/Tokyo';
 var SHEET_ID = ''; // QRコード管理データ（このスクリプトの親）
 // 読み取りの転送・記録は Cloudflare Worker（worker/）。WORKER_TOKEN は Secret.gs（エディタ以外に出さない）
 var WORKER_URL = 'https://kcreate-qr.k-create.workers.dev';
-var BASE_URL = WORKER_URL + '/'; // QRに入れるURLの頭（独自ドメインにしたら settings シートの base_url で上書き）
+var BASE_URL = 'https://www.k-create.co.jp/qr/'; // QRに入れるURLの頭（会社HPの qr フォルダ → Worker へ転送・2026-10-29〜。settings シートの base_url で上書き可）
 var DEFAULT_GENRES = ['グルメ', 'スクール', 'ショップ', '暮らし', 'トータルケア', 'クリニック', '介護・福祉', '終活・士業', '企業', 'その他'];
 // battle_start = QRバトル集計開始日（任意・yyyy-MM-dd）。配布開始日。ランキング「QRバトル」はこの日から1か月ずつ区切って数える
 // qid = QRのID（担当者ごとの英字＋6桁の連番。例 A000001。削除しても番号は再利用しない）／division = QRバトルのエントリー部門（任意）
@@ -1312,7 +1312,7 @@ function call(fn) {
 function esc(s) { return String(s == null ? '' : s).replace(/[&<>"']/g, function (c) { return { '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]; }); }
 function toast(msg) { var t = $('toast'); t.textContent = msg; t.style.display = 'block'; clearTimeout(t._t); t._t = setTimeout(function () { t.style.display = 'none'; }, 2500); }
 function ymd(d) { return d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2) + '-' + ('0' + d.getDate()).slice(-2); }
-function shortUrl(code) { return (S.baseUrl || 'https://qr.k-create.co.jp/').replace(/\/?$/, '/') + code; }
+function shortUrl(code) { return (S.baseUrl || 'https://www.k-create.co.jp/qr/').replace(/\/?$/, '/') + code; }
 function canEdit(q) { return S.me.isAdmin || q.ownerEmail === S.me.email; }
 function fmt(n) { return n == null ? '−' : Number(n).toLocaleString(); }
 function initial(s) { return esc(String(s || '?').trim().charAt(0).toUpperCase()); }
