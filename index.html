@@ -256,6 +256,15 @@
     th, td { padding: 10px; }
     .kpi .l { font-size: 11px; }
   }
+
+  /* 他のツールへのリンク（左下・新しいタブで開く） */
+  .tools { border-top: 1px solid var(--side-line); padding: 8px 10px 6px; }
+  .tools .tools-h { padding: 6px 12px 4px; font-size: 10.5px; letter-spacing: .14em; color: #64748b; font-family: var(--mono); text-transform: uppercase; }
+  .tools a { display: flex; align-items: center; gap: 10px; color: var(--side-text); text-decoration: none; font-size: 13px; padding: 7px 12px; border-radius: 8px; }
+  .tools a:hover { background: var(--side-2); color: var(--side-hi); }
+  .tools a svg { width: 16px; height: 16px; flex: none; opacity: .85; }
+  .tools a .ext { margin-left: auto; font-size: 11px; color: #64748b; }
+  @media (max-width: 900px) { .tools { display: flex; gap: 4px; padding: 6px 10px 10px; border-top: 0; overflow-x: auto; } .tools .tools-h { display: none; } .tools a { padding: 6px 10px; white-space: nowrap; } .tools a .ext { display: none; } }
 </style>
 </head>
 <body>
@@ -273,6 +282,7 @@
     </nav>
     <div class="side-sec">Folders</div>
     <div id="folders"></div>
+    <div class="tools"><div class="tools-h">他のツール</div><a href="https://script.google.com/macros/s/AKfycbyR5vFkZm9bwKSyN2lZvcZcUUim_p-zxiiIx22jHiU8TRB81ZxAtyjvB6dtFjg-_GxH/exec" target="_blank" rel="noopener" title="見積作成を新しいタブで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>見積作成<span class="ext">↗</span></a><a href="https://hirayama-byte.github.io/kcreate-dm-sample/" target="_blank" rel="noopener" title="一斉DM管理を新しいタブで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9 6 9-6M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M3 7a2 2 0 012-2h14a2 2 0 012 2"/></svg>一斉DM管理<span class="ext">↗</span></a></div>
     <button class="me" id="meBtn" title="名前を変更"><span class="avatar" id="meAv">?</span><div><span id="me"></span><small id="meRole"></small></div><span class="edit-ico">名前を変更</span></button>
   </aside>
 
