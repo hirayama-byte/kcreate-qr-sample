@@ -38,7 +38,8 @@
   #tabs button:hover { background: var(--side-2); color: var(--side-hi); }
   #tabs button.on { background: var(--side-2); color: #fff; box-shadow: inset 3px 0 0 var(--accent-2); }
   .side-sec { padding: 14px 22px 6px; font-size: 10.5px; letter-spacing: .14em; color: #64748b; font-family: var(--mono); text-transform: uppercase; }
-  #folders { padding: 0 10px 10px; overflow: auto; flex: 1; }
+  #folders { padding: 0 10px 10px; overflow: auto; flex: 1; scrollbar-width: none; } /* 担当者の一覧のスクロールバーは出さない（収まらないときはホイールで動く）2026-10-29 */
+  #folders::-webkit-scrollbar { display: none; }
   #folders button { display: flex; width: 100%; justify-content: space-between; align-items: center; border: 0; background: none; color: var(--side-text);
                     font: inherit; font-size: 13px; padding: 7px 12px; border-radius: 8px; cursor: pointer; text-align: left; }
   #folders button:hover { background: var(--side-2); color: var(--side-hi); }
