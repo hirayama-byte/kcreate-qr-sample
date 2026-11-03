@@ -1,0 +1,493 @@
+<!doctype html>
+<html lang="ja">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="robots" content="noindex">
+<title>QRコード管理 使い方ガイド</title>
+<style>
+  :root { --text: #0f172a; --muted: #475569; --faint: #94a3b8; --line: #e2e8f0; --bg: #f8fafc; --card: #fff; --accent: #2563eb; --accent-weak: #eff6ff; --warn: #fef3c7; --warn-text: #92400e; --side: #0f172a; }
+  * { box-sizing: border-box; }
+  html { scroll-behavior: smooth; scroll-padding-top: 16px; }
+  body { margin: 0; background: var(--bg); color: var(--text); font-family: -apple-system, BlinkMacSystemFont, "Hiragino Sans", "Hiragino Kaku Gothic ProN", "Yu Gothic UI", "Yu Gothic", Meiryo, sans-serif; font-size: 15.5px; line-height: 1.85; -webkit-text-size-adjust: 100%; }
+  a { color: var(--accent); }
+  header.top { background: var(--side); color: #fff; padding: 28px 16px 26px; }
+  header.top .in { max-width: 1120px; margin: 0 auto; }
+  header.top h1 { margin: 0 0 6px; font-size: 26px; letter-spacing: .02em; }
+  header.top p { margin: 0; color: #cbd5e1; font-size: 14.5px; }
+  .wrap { max-width: 1120px; margin: 0 auto; padding: 24px 16px 60px; display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 32px; align-items: start; }
+  nav.toc { position: sticky; top: 16px; background: var(--card); border: 1px solid var(--line); border-radius: 12px; padding: 14px 10px; max-height: calc(100vh - 32px); overflow: auto; }
+  nav.toc b { display: block; font-size: 12px; color: var(--muted); padding: 0 8px 6px; letter-spacing: .05em; }
+  nav.toc a { display: block; padding: 5px 8px; border-radius: 6px; color: var(--text); text-decoration: none; font-size: 14px; line-height: 1.5; }
+  nav.toc a:hover { background: var(--accent-weak); color: var(--accent); }
+  nav.toc a small { color: var(--faint); font-size: 11px; margin-left: 4px; }
+  main { min-width: 0; }
+  section { background: var(--card); border: 1px solid var(--line); border-radius: 14px; padding: 24px 26px; margin-bottom: 22px; }
+  h2 { margin: 0 0 14px; font-size: 21px; padding-bottom: 10px; border-bottom: 2px solid var(--accent-weak); display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+  h2 .no { display: inline-flex; align-items: center; justify-content: center; width: 30px; height: 30px; border-radius: 8px; background: var(--accent); color: #fff; font-size: 15px; flex: none; }
+  h3 { margin: 22px 0 8px; font-size: 17px; }
+  p { margin: 0 0 12px; }
+  ul, ol { margin: 0 0 14px; padding-left: 1.4em; }
+  li { margin-bottom: 4px; }
+  figure { margin: 14px 0 20px; }
+  figure img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; background: #fff; box-shadow: 0 2px 10px rgba(15, 23, 42, .06); }
+  figure.s img { max-width: 420px; }
+  figure.m img { max-width: 620px; }
+  figure.xs img { max-width: 280px; }
+  figcaption { font-size: 13px; color: var(--muted); margin-top: 6px; }
+  .pair { display: flex; gap: 16px; flex-wrap: wrap; align-items: flex-start; }
+  .pair figure { flex: 1 1 260px; margin-top: 6px; }
+  .note { background: var(--accent-weak); border-left: 4px solid var(--accent); border-radius: 8px; padding: 10px 14px; margin: 12px 0 16px; font-size: 14.5px; }
+  .warn { background: var(--warn); border-left: 4px solid #f59e0b; color: var(--warn-text); border-radius: 8px; padding: 10px 14px; margin: 12px 0 16px; font-size: 14.5px; }
+  .admin { display: inline-block; font-size: 12px; font-weight: 700; color: #7c2d12; background: #ffedd5; border: 1px solid #fdba74; border-radius: 999px; padding: 1px 10px; line-height: 1.7; }
+  .key { display: inline-block; border: 1px solid #cbd5e1; border-bottom-width: 2px; border-radius: 6px; padding: 0 7px; font-size: 13px; background: #fff; line-height: 1.6; white-space: nowrap; }
+  table { border-collapse: collapse; width: 100%; margin: 6px 0 16px; font-size: 14.5px; }
+  th, td { border: 1px solid var(--line); padding: 7px 10px; text-align: left; vertical-align: top; }
+  th { background: #f1f5f9; font-weight: 700; white-space: nowrap; }
+  .tbl { overflow-x: auto; }
+  .sw { display: inline-block; width: 14px; height: 14px; border-radius: 4px; vertical-align: -2px; margin-right: 6px; border: 1px solid rgba(0,0,0,.08); }
+  .faq dt { font-weight: 700; margin-top: 14px; }
+  .faq dt::before { content: "Q. "; color: var(--accent); }
+  .faq dd { margin: 4px 0 0; padding-left: 1.6em; }
+  .back { display: inline-block; margin-top: 4px; font-size: 13px; }
+  footer { text-align: center; color: var(--faint); font-size: 12.5px; padding: 10px 16px 30px; }
+
+  /* demo-css:start */
+  /* 動きで見る（ポインターが次に押す場所へ動く）: guide/build-demos.js が index.html に入れる。ここを直したら build-demos.js を実行 */
+  .demo { display: flex; gap: 22px; align-items: flex-start; flex-wrap: wrap; margin: 10px 0 22px; padding: 16px; background: #f8fafc; border: 1px solid var(--line); border-radius: 12px; }
+  .demo.wide { display: block; }
+  .demo .stage { position: relative; flex: 0 0 auto; max-width: 100%; }
+  .demo.wide .stage { margin: 0 auto; }
+  .demo .stage img { display: block; width: 100%; height: auto; border: 1px solid var(--line); border-radius: 10px; background: #fff; box-shadow: 0 2px 10px rgba(15, 23, 42, .06); transition: opacity .18s; }
+  .demo .stage img.fade { opacity: 0; }
+  .demo .ptr { position: absolute; left: 50%; top: 50%; width: 30px; height: 30px; margin: -2.5px 0 0 -5px; pointer-events: none; z-index: 5; transition: left .9s cubic-bezier(.45,.05,.3,1), top .9s cubic-bezier(.45,.05,.3,1), transform .15s, opacity .2s; filter: drop-shadow(0 2px 3px rgba(0,0,0,.35)); }
+  .demo .ptr svg { display: block; }
+  .demo .ptr.press { transform: scale(.82); }
+  .demo .ptr.drag { transition-duration: 1.1s; }
+  .demo .ring { position: absolute; width: 44px; height: 44px; margin: -22px 0 0 -22px; border-radius: 50%; border: 3px solid var(--accent); opacity: 0; pointer-events: none; z-index: 3; }
+  .demo .ring.go { animation: demoRing .7s ease-out; }
+  @keyframes demoRing { from { transform: scale(.3); opacity: .9; } to { transform: scale(1.3); opacity: 0; } }
+  .demo .hl { position: absolute; z-index: 2; border: 3px solid var(--accent); border-radius: 8px; background: rgba(37, 99, 235, .10); box-shadow: 0 0 0 4px rgba(37, 99, 235, .18); pointer-events: none; opacity: 0; transition: left .6s, top .6s, width .6s, height .6s, opacity .25s; }
+  .demo .hl.on { opacity: 1; }
+  .demo .badge { position: absolute; z-index: 6; min-width: 26px; height: 26px; padding: 0 7px; border-radius: 13px; background: var(--accent); color: #fff; font: 700 13px/26px system-ui, sans-serif; text-align: center; box-shadow: 0 2px 6px rgba(0,0,0,.25); transform: translate(14px, 14px); transition: left .9s cubic-bezier(.45,.05,.3,1), top .9s cubic-bezier(.45,.05,.3,1), opacity .2s; pointer-events: none; }
+  .demo .typing { position: absolute; z-index: 4; max-width: 92%; padding: 5px 10px; border-radius: 8px; background: #0f172a; color: #fff; font: 600 13px/1.5 system-ui, sans-serif; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; box-shadow: 0 3px 10px rgba(0,0,0,.25); pointer-events: none; opacity: 0; transition: opacity .2s; }
+  .demo .typing.on { opacity: 1; }
+  .demo .typing::before { content: "⌨ "; opacity: .8; }
+  .demo .typing::after { content: ""; display: inline-block; width: 2px; height: 1em; margin-left: 2px; background: #5eead4; vertical-align: -2px; animation: demoCaret .8s steps(1) infinite; }
+  @keyframes demoCaret { 50% { opacity: 0; } }
+  .demo.instant .ptr, .demo.instant .badge, .demo.instant .hl, .demo.instant .stage img { transition: none !important; }
+  .demo .side { flex: 1 1 240px; min-width: 0; }
+  .demo.wide .side { margin-top: 14px; }
+  .demo .side h4 { margin: 0 0 8px; font-size: 15px; }
+  .demo ol.steps { margin: 0 0 12px; padding: 0; list-style: none; counter-reset: st; }
+  .demo.wide ol.steps { columns: 2; column-gap: 12px; }
+  .demo ol.steps li { counter-increment: st; position: relative; padding: 7px 10px 7px 40px; margin: 0 0 4px; border-radius: 8px; color: var(--muted); transition: background .3s, color .3s; font-size: 14.5px; line-height: 1.55; break-inside: avoid; cursor: pointer; }
+  .demo ol.steps li::before { content: counter(st); position: absolute; left: 10px; top: 7px; width: 22px; height: 22px; border-radius: 50%; background: #e2e8f0; color: var(--muted); font: 700 12px/22px system-ui, sans-serif; text-align: center; transition: background .3s, color .3s; }
+  .demo ol.steps li.on { background: var(--accent-weak); color: var(--text); font-weight: 700; }
+  .demo ol.steps li.on::before { background: var(--accent); color: #fff; }
+  .demo ol.steps li.done::before { background: #99f6e4; color: #115e59; }
+  .demo .ctl { display: flex; gap: 8px; }
+  .demo .ctl button { font: inherit; font-size: 13px; border: 1px solid var(--line); background: #fff; border-radius: 8px; padding: 5px 12px; cursor: pointer; color: var(--text); }
+  .demo .ctl button:hover { border-color: var(--accent); color: var(--accent); }
+  .demo .now { display: none; flex: 1 1 100%; margin-top: -12px; padding: 8px 10px; border-radius: 8px; background: var(--accent-weak); border-left: 4px solid var(--accent); font-size: 14px; font-weight: 700; line-height: 1.5; min-height: 2.6em; }
+  .demo.wide .now { margin-top: 8px; }
+  @media (max-width: 860px) { .demo .now { display: block; } .demo.wide ol.steps { columns: 1; } } /* スマホ: 手順の一覧は写真の下なので、今の手順を写真のすぐ下にも出す */
+  @media (max-width: 860px) { .demo { padding: 10px; gap: 14px; } }
+  @media (prefers-reduced-motion: reduce) { .demo .ptr, .demo .badge, .demo .hl { transition: none; } .demo .ring.go { animation: none; } }
+  /* demo-css:end */
+  @media (max-width: 860px) {
+    .wrap { grid-template-columns: minmax(0, 1fr); gap: 16px; padding-top: 16px; }
+    nav.toc { position: static; max-height: none; columns: 2; column-gap: 8px; }
+    nav.toc b { column-span: all; }
+    nav.toc a { break-inside: avoid; }
+    section { padding: 18px 16px; border-radius: 12px; }
+    header.top h1 { font-size: 22px; }
+    h2 { font-size: 19px; }
+    body { font-size: 15px; }
+  }
+  @media (max-width: 420px) { nav.toc { columns: 1; } }
+</style>
+</head>
+<body>
+<header class="top"><div class="in">
+  <h1>QRコード管理 使い方ガイド</h1>
+  <p>株式会社 ケイ・クリエイト 社内向け。画面の写真はサンプル（架空のデータ）です。</p>
+</div></header>
+
+<div class="wrap">
+<nav class="toc" aria-label="目次">
+  <b>目次</b>
+  <a href="#start">1. はじめに</a>
+  <a href="#screen">2. 画面の見方</a>
+  <a href="#issue">3. QRを発行する</a>
+  <a href="#battle">4. QRバトルと集計開始日</a>
+  <a href="#list">5. QRを探す</a>
+  <a href="#detail">6. 読み取り回数・飛び先の変更</a>
+  <a href="#report">7. QRごとのレポートPDF</a>
+  <a href="#owner">8. 担当者の引き継ぎ</a>
+  <a href="#bulk">9. まとめて削除</a>
+  <a href="#rank">10. ランキングとExcel</a>
+  <a href="#sales">11. 営業ツールPDF</a>
+  <a href="#trash">12. ゴミ箱<small>管理者</small></a>
+  <a href="#import">13. 一括取り込み<small>管理者</small></a>
+  <a href="#mobile">14. スマホで使う</a>
+  <a href="#faq">15. よくある質問</a>
+</nav>
+
+<main>
+
+<section id="start">
+  <h2><span class="no">1</span>はじめに</h2>
+<!-- demo:start -->
+  <h3>動きで見る：名前を登録する</h3>
+  <div class="demo" data-demo="start">
+    <div class="stage" style="width:448px"><img src="img/demo-start.png" alt="名前の登録" width="448" height="249" loading="lazy"></div>
+    <div class="side"><h4>この順に押します</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-start.png","w":448,"h":249,"dw":448,"alt":"名前の登録"}],"steps":[{"img":0,"x":50,"y":18.1,"t":"初めて開くと、名前の登録が出ます","box":{"x":7.4,"y":13.3,"w":85.3,"h":9.6},"look":{"x":6.5,"y":11.6,"w":87.1,"h":12.9}},{"img":0,"x":20.8,"y":53.4,"t":"自分の名前（例：平山）を入れます","box":{"x":7.4,"y":46.2,"w":85.3,"h":14.5},"type":"平山"},{"img":0,"x":13.3,"y":79.5,"t":"「登録」を押します。名前はあとから左下で変えられます","box":{"x":7.4,"y":72.3,"w":11.8,"h":14.5}}]}</script>
+  </div>
+<!-- /demo:start -->
+  <p>QRコード管理は、くれよん掲載用などのQRを、<b>発行から飛び先の変更、読み取り回数の確認、QRバトルの集計</b>までひとつの画面で管理する社内サイトです。会社の Google アカウント（@k-create.co.jp）で開いてください。</p>
+  <h3>初めて開いたとき：名前の登録</h3>
+  <p>初めて開くと「はじめに名前を登録してください」と出ます。名前（例：平山）を入れて「登録」を押してください。名前は左のフォルダ名と、発行したQRの作成者名になります。あとから左下の自分の名前（「名前を変更」）でいつでも変えられます。名前を変えると、今まで作ったQRの作成者名も変わります。</p>
+  <div class="note">今日からの新規QRは、このサイトで発行してください。旧サイト（happymedia・qrqrq）で作って配布済みのQRは、そのまま使えます。</div>
+</section>
+
+<section id="screen">
+  <h2><span class="no">2</span>画面の見方</h2>
+<!-- demo:screen -->
+  <h3>動きで見る：画面のどこに何があるか</h3>
+  <div class="demo" data-demo="screen">
+    <div class="stage" style="width:1440px"><img src="img/demo-screen.png" alt="QRコード管理の画面全体" width="1440" height="900" loading="lazy"></div>
+    <div class="side"><h4>見る場所</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-screen.png","w":1440,"h":900,"dw":1440,"alt":"QRコード管理の画面全体"}],"steps":[{"img":0,"x":8.3,"y":18.4,"t":"左のメニュー：QR一覧・新規登録・ランキング（管理者はゴミ箱も）","box":{"x":0,"y":8.3,"w":16.7,"h":20.2},"look":{"x":-0.3,"y":7.9,"w":17.2,"h":21.1}},{"img":0,"x":8.3,"y":53.3,"t":"フォルダ：人ごとのQR。押すとその人のQRだけになります","box":{"x":0,"y":32.3,"w":16.7,"h":42},"look":{"x":-0.3,"y":31.9,"w":17.2,"h":42.9}},{"img":0,"x":58.3,"y":14.4,"t":"登録数と、直近30日・累計の読み取り回数","box":{"x":18.6,"y":9.3,"w":79.4,"h":10.2},"look":{"x":18.3,"y":8.9,"w":80,"h":11.1}},{"img":0,"x":58.3,"y":25.3,"t":"検索とジャンル・部門の絞り込み","box":{"x":18.7,"y":21.7,"w":79.3,"h":7.2},"look":{"x":18.4,"y":21.2,"w":79.9,"h":8.1}},{"img":0,"x":58.3,"y":35.6,"t":"QRの一覧。行を押すと詳細が開きます","box":{"x":18.7,"y":28.9,"w":79.3,"h":68.3},"look":{"x":18.4,"y":28.4,"w":79.9,"h":69.2}},{"img":0,"x":86.3,"y":3.3,"t":"「使い方ガイド」でこのガイドが開きます","box":{"x":81.9,"y":1.3,"w":8.9,"h":4},"look":{"x":81.7,"y":1.1,"w":9.2,"h":4.4}},{"img":0,"x":94.8,"y":3.3,"t":"「＋ 新規QR」で新しいQRを作ります","box":{"x":91.6,"y":1.3,"w":6.5,"h":4},"look":{"x":91.5,"y":1.1,"w":6.7,"h":4.4}},{"img":0,"x":8.3,"y":96.7,"t":"左下は自分の名前。押すと名前を変えられます","box":{"x":0,"y":93.3,"w":16.7,"h":6.7},"look":{"x":-0.1,"y":93.2,"w":16.8,"h":6.9}}]}</script>
+  </div>
+<!-- /demo:screen -->
+  <ul>
+    <li><b>左のメニュー</b>：QR一覧／新規登録／ランキング（管理者には「ゴミ箱」も）。</li>
+    <li><b>フォルダ</b>：「全体」「自分のQR」と、人ごとのフォルダです。押すとその人のQRだけになり、上の数字もその人の分になります。</li>
+    <li><b>上のカード</b>：登録QR数、直近30日の読み取り回数、累計の読み取り回数。</li>
+    <li><b>他のツール</b>：見積作成・一斉DM管理などの社内サイトへのリンクです。</li>
+    <li><b>右上</b>：「使い方ガイド」（このページ）と「＋ 新規QR」。</li>
+  </ul>
+</section>
+
+<section id="issue">
+  <h2><span class="no">3</span>QRを発行する</h2>
+<!-- demo:issue -->
+  <h3>動きで見る：QRを発行する</h3>
+  <div class="demo" data-demo="issue">
+    <div class="stage" style="width:1424px"><img src="img/demo-issue-1.png" alt="新規登録の画面" width="1424" height="498" loading="lazy"></div>
+    <div class="side"><h4>この順に押します</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-issue-1.png","w":1424,"h":498,"dw":1424,"alt":"新規登録の画面"},{"src":"img/demo-issue-2.png","w":1168,"h":603,"dw":1168,"alt":"発行したQR"}],"steps":[{"img":0,"x":8.4,"y":16.7,"t":"左のメニューの「新規登録」を押します","box":{"x":0.7,"y":12.9,"w":15.4,"h":7.6}},{"img":0,"x":34.5,"y":21.5,"t":"名称を入れます（号＋版_クライアント名_メモ の形がおすすめ）","box":{"x":28.2,"y":17.9,"w":44.5,"h":7.2},"type":"2612一宮版_ラーメン一番_クーポン"},{"img":0,"x":50.4,"y":40,"t":"号と版から、QRバトルの集計開始日が自動で入ります","box":{"x":28.2,"y":36.3,"w":44.5,"h":7.2},"look":{"x":27.9,"y":35.5,"w":45.1,"h":8.8}},{"img":0,"x":50.4,"y":50.2,"t":"QRバトルのエントリー部門を選びます（出さないときはそのまま）","box":{"x":28.2,"y":46.6,"w":44.5,"h":7.2}},{"img":0,"x":50.4,"y":60.4,"t":"ジャンルを選びます","box":{"x":28.2,"y":56.8,"w":44.5,"h":7.2}},{"img":0,"x":34.5,"y":70.5,"t":"飛び先URLを入れます","box":{"x":28.2,"y":66.9,"w":44.5,"h":7.2},"type":"https://example.jp/ramen/coupon"},{"img":0,"x":32.1,"y":80.5,"t":"「QRを発行する」を押します","box":{"x":28.2,"y":76.9,"w":7.9,"h":7.2}},{"img":1,"x":81.1,"y":64.7,"t":"IDが付きます（エントリーシートの「QRコードID」に使います）","box":{"x":78.3,"y":63,"w":5.5,"h":3.3},"look":{"x":78,"y":62.4,"w":6.2,"h":4.6}},{"img":1,"x":80.7,"y":56.6,"t":"大きさを選びます（入稿は1200px以上がおすすめ）","box":{"x":76.8,"y":53.6,"w":7.8,"h":6}},{"img":1,"x":88.6,"y":56.6,"t":"「JPEG」を押すとQRの画像がダウンロードされます","box":{"x":85.1,"y":53.6,"w":6.9,"h":6}}]}</script>
+  </div>
+<!-- /demo:issue -->
+  <h3>名称の付け方（おすすめ）</h3>
+  <p><code>2612一宮版_クライアント名_メモ</code> のように、<b>号＋版</b>、クライアント名、メモの順に <code>_</code> でつなぎます。<code>2612</code> は 2026年12月号。版は 一宮・江南・岩倉・清須・津島・西北 のどれかです。こう書くと、QRバトルの集計開始日と、エントリーシートのクライアント名・部数が自動で入ります。</p>
+  <table>
+    <tr><th>名称</th><td>必ず入れます。</td></tr>
+    <tr><th>QRバトル集計開始日</th><td>名称に号と版があれば、配布開始日が自動で入ります（青い説明が出ます）。違うときだけ直してください。QRバトルに出さないQRは空欄でかまいません（<a href="#battle">4. QRバトル</a>）。</td></tr>
+    <tr><th>エントリー部門</th><td>QRバトル用です。表紙巻頭・グルメ・ビューティー・ヘルス・スクール・ハウジング・その他・求人 の各部門。出さないときは「（エントリーしない）」のまま。</td></tr>
+    <tr><th>ジャンル</th><td>一覧の整理・営業ツールPDF用です。必ず選びます。</td></tr>
+    <tr><th>飛び先URL</th><td><code>http://</code> か <code>https://</code> から入れます。</td></tr>
+  </table>
+  <h3>IDは自動で付きます</h3>
+  <p>発行すると <code>A000001</code> のようなIDが付きます。英字は担当者ごと、数字はその人の通し番号です。エントリーシートの「QRコードID」に使います。削除しても番号は再利用しません。</p>
+  <h3>JPEGの大きさ</h3>
+  <p>600／1200／2400px から選べます。入稿用は <b>1200px 以上</b>がおすすめです。</p>
+  <div class="note">QRに入っているのは固定のURLで、変えられるのは飛び先だけです。印刷済みのQRもそのまま新しい飛び先に移動するので、刷り直しは不要です（<a href="#detail">6. 飛び先の変更</a>）。</div>
+</section>
+
+<section id="battle">
+  <h2><span class="no">4</span>QRバトルと集計開始日</h2>
+  <p>各QRは<b>「集計開始日から1か月間」</b>の読み取り回数で競います。集計開始日は、その号の配布開始日です。名称に号と版が入っていれば、次の予定表から自動で入ります。</p>
+  <div class="tbl"><table>
+    <tr><th>版</th><th>2026年12月号</th><th>2027年1月号</th><th>2027年2月号</th></tr>
+    <tr><th>一宮版</th><td>11/19</td><td>12/19</td><td>1/19</td></tr>
+    <tr><th>江南版</th><td>11/30</td><td>12/27</td><td>1/31</td></tr>
+    <tr><th>岩倉版</th><td>11/30</td><td>12/27</td><td>1/31</td></tr>
+    <tr><th>清須版</th><td>11/30</td><td>12/27</td><td>1/31</td></tr>
+    <tr><th>津島版</th><td>11/28</td><td>12/25</td><td>1/28</td></tr>
+    <tr><th>西北版</th><td>12/2</td><td>1/2</td><td>2/2</td></tr>
+  </table></div>
+  <p>予定表に無い号は、一宮版は前月19日、江南・岩倉・清須版は前月末、津島版は前月28日、西北版は当月2日として推定し、「規則から推定」と表示します。配布開始がずれたときは日付を直してください。</p>
+  <p>名称の版は、稲沢→一宮、大口・扶桑→江南、北名古屋→岩倉、海部→津島、西区・北区→西北 のように書いても判断します。</p>
+</section>
+
+<section id="list">
+  <h2><span class="no">5</span>QRを探す</h2>
+<!-- demo:list -->
+  <h3>動きで見る：QRを探す</h3>
+  <div class="demo" data-demo="list">
+    <div class="stage" style="width:1180px"><img src="img/demo-list.png" alt="QR一覧で探す" width="1440" height="560" loading="lazy"></div>
+    <div class="side"><h4>この順に押します</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-list.png","w":1440,"h":560,"dw":1180,"alt":"QR一覧で探す"}],"steps":[{"img":0,"x":8.3,"y":60.8,"t":"フォルダを押すと、その人のQRだけになります","box":{"x":0.7,"y":57.9,"w":15.3,"h":5.9}},{"img":0,"x":32.1,"y":40.5,"t":"検索欄に、名称・ID・URL・作成者などを入れます","box":{"x":26.5,"y":37.3,"w":44.2,"h":6.4},"type":"ラーメン"},{"img":0,"x":76.6,"y":40.5,"t":"ジャンルや部門でも絞り込めます","box":{"x":71.2,"y":37.3,"w":10.7,"h":6.4},"more":[{"x":87.8,"y":40.5}]},{"img":0,"x":89.8,"y":50,"t":"見出しを押すと、その順に並べ替えます（もう一度で逆順）","box":{"x":85.4,"y":46.4,"w":8.8,"h":7.1}},{"img":0,"x":36.6,"y":57.4,"t":"行を押すと詳細が開きます","box":{"x":28.5,"y":55.6,"w":16.1,"h":3.6}}]}</script>
+  </div>
+<!-- /demo:list -->
+  <p>「QR一覧」には全員のQRが並びます。左のフォルダで人ごとに、上の検索でID・名称・URL・ジャンル・部門・作成者で絞り込めます。検索欄の左の「すべて／名称／URL」で、探す項目を限ることもできます。</p>
+  <p>表の見出し（名称・作成日・30日・累計など）を押すと、その順に並べ替えます。もう一度押すと逆順です。たくさんあるときは200件ずつ表示され、いちばん下の「さらに表示」で続きが出ます。</p>
+  <p>自分が作成者のQR（管理者は全部）は、一覧のジャンル・部門のプルダウンを変えるとその場で保存されます。</p>
+</section>
+
+<section id="detail">
+  <h2><span class="no">6</span>読み取り回数・飛び先の変更</h2>
+<!-- demo:detail -->
+  <h3>動きで見る：読み取り回数を見る・飛び先を変える</h3>
+  <div class="demo" data-demo="detail">
+    <div class="stage" style="width:980px"><img src="img/demo-detail.png" alt="QRの詳細" width="980" height="1050" loading="lazy"></div>
+    <div class="side"><h4>この順に押します</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-detail.png","w":980,"h":1050,"dw":980,"alt":"QRの詳細"}],"steps":[{"img":0,"x":70.8,"y":12.3,"t":"期間を選ぶと、日別の読み取りグラフが変わります（7D・30D・90D・1Y）","box":{"x":68.4,"y":10.7,"w":4.8,"h":3.2}},{"img":0,"x":62.8,"y":18.7,"t":"期間の合計・1日平均・累計","box":{"x":27.9,"y":15.3,"w":69.8,"h":6.7},"look":{"x":27.4,"y":15,"w":70.6,"h":7.4}},{"img":0,"x":17.8,"y":34,"t":"ここからもQRのJPEGをダウンロードできます","box":{"x":13.6,"y":32.3,"w":8.2,"h":3.4}},{"img":0,"x":26.2,"y":86.8,"t":"飛び先を変えるときは、飛び先URLを書き換えて","box":{"x":14,"y":85,"w":83.7,"h":3.4},"type":"https://example.jp/ramen/new"},{"img":0,"x":16.7,"y":91.5,"t":"「保存」。印刷済みのQRもそのまま新しい飛び先に移動します","box":{"x":14,"y":89.8,"w":5.4,"h":3.4}},{"img":0,"x":94.9,"y":91.5,"t":"使わなくなったQRは「削除」（ゴミ箱に入ります）","box":{"x":92.2,"y":89.8,"w":5.4,"h":3.4},"look":{"x":92,"y":89.6,"w":5.8,"h":3.8}}]}</script>
+  </div>
+<!-- /demo:detail -->
+  <p>一覧の行を押すと詳細が開きます。日別の読み取りグラフ（7D／30D／90D／1Y、日付を直接選ぶこともできます）、QRの中身と飛び先、JPEGのダウンロードがあります。</p>
+  <p>名称・集計開始日・部門・担当者・ジャンル・飛び先の変更と削除ができるのは、<b>作成者本人と管理者だけ</b>です。他の人のQRは見るだけです（担当者の変更だけは誰でもできます：<a href="#owner">8. 担当者の引き継ぎ</a>）。</p>
+  <div class="warn">飛び先を変えて「保存」を押すと確認が出ます。「OK」で、印刷済みのQRも新しい飛び先に移動します。</div>
+  <p>「削除」するとゴミ箱に入り、そのQRを読み取るとケイクリエイトのサイトへ移動します。管理者は元に戻せます（<a href="#trash">12. ゴミ箱</a>）。</p>
+</section>
+
+<section id="report">
+  <h2><span class="no">7</span>QRごとのレポートPDF</h2>
+<!-- demo:report -->
+  <h3>動きで見る：QRごとのレポートPDFを作る</h3>
+  <div class="demo" data-demo="report">
+    <div class="stage" style="width:980px"><img src="img/demo-report-1.png" alt="QRの詳細" width="980" height="520" loading="lazy"></div>
+    <div class="side"><h4>この順に押します</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-report-1.png","w":980,"h":520,"dw":980,"alt":"QRの詳細"},{"src":"img/demo-report-2.png","w":980,"h":873,"dw":980,"alt":"レポートのプレビュー"}],"steps":[{"img":0,"x":84.6,"y":24.8,"t":"詳細の「レポートPDF」を押します","box":{"x":78.2,"y":21.3,"w":12.8,"h":6.9}},{"img":1,"x":50,"y":56.1,"t":"直近90日のグラフと文章の分析がプレビューされます","box":{"x":4,"y":19.6,"w":92,"h":73},"look":{"x":3.6,"y":19.1,"w":92.9,"h":74}},{"img":1,"x":92.9,"y":14.3,"t":"「PDFを出力」でA4横1枚のPDFがダウンロードされます","box":{"x":88.2,"y":12.3,"w":9.4,"h":4.1}},{"img":1,"x":8,"y":14.3,"t":"「← 詳細に戻る」で詳細に戻ります","box":{"x":2.3,"y":12.3,"w":11.2,"h":4.1}}]}</script>
+  </div>
+<!-- /demo:report -->
+  <p>詳細の「レポートPDF」で、そのQRの直近90日の日別グラフ（7日移動平均の線・配布開始日の印つき）と、文章の分析（概況・推移・ピーク・曜日の傾向・ジャンル内の位置・所見）を A4 横1枚にまとめます。プレビューを見て「PDFを出力」でダウンロードします。分析の文章は読み取り回数の推移から自動で作られます。クライアントへの報告に使えます。</p>
+</section>
+
+<section id="owner">
+  <h2><span class="no">8</span>担当者の引き継ぎ</h2>
+<!-- demo:owner -->
+  <h3>動きで見る：担当者を引き継ぐ</h3>
+  <div class="demo" data-demo="owner">
+    <div class="stage" style="width:1100px"><img src="img/demo-owner-1.png" alt="一覧の作成者" width="1210" height="283" loading="lazy"></div>
+    <div class="side"><h4>この順に押します</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-owner-1.png","w":1210,"h":283,"dw":1100,"alt":"一覧の作成者"},{"src":"img/demo-owner-2.png","w":978,"h":200,"dw":978,"alt":"他の人のQRの詳細"}],"steps":[{"img":0,"x":62.3,"y":31.5,"t":"一覧の「作成者」のプルダウンで、引き継ぐ人を選ぶとすぐ保存されます","box":{"x":60,"y":26.9,"w":4.5,"h":9.2}},{"img":1,"x":55.8,"y":34,"t":"他の人のQRでも、担当者だけは誰でも変えられます（退職・異動の引き継ぎ用）","box":{"x":13.9,"y":25,"w":83.8,"h":18}},{"img":1,"x":19.4,"y":56,"t":"新しい担当者を選んで「担当者を変更」を押します。IDはそのままです","box":{"x":13.9,"y":47,"w":10.9,"h":18}}]}</script>
+  </div>
+<!-- /demo:owner -->
+  <p>一覧の「作成者」のプルダウン、または詳細の「担当者」で、QRの担当者を別のメンバーに変えられます。一覧で選ぶとすぐ保存されます。<b>他の人のQRでも、担当者の変更だけは誰でもできます</b>（退職・異動の引き継ぎ用）。ID はそのままです。</p>
+</section>
+
+<section id="bulk">
+  <h2><span class="no">9</span>まとめて削除</h2>
+<!-- demo:bulk -->
+  <h3>動きで見る：まとめて削除する</h3>
+  <div class="demo" data-demo="bulk">
+    <div class="stage" style="width:1100px"><img src="img/demo-bulk.png" alt="一覧でチェックして削除" width="1210" height="600" loading="lazy"></div>
+    <div class="side"><h4>この順に押します</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-bulk.png","w":1210,"h":600,"dw":1100,"alt":"一覧でチェックして削除"}],"steps":[{"img":0,"x":5,"y":70.9,"t":"消したいQRの左端にチェックを入れます","box":{"x":4.4,"y":69.6,"w":1.2,"h":2.5},"more":[{"x":5,"y":82.9}]},{"img":0,"x":5,"y":46.8,"t":"見出しのチェックで、表示中のQRをまとめて選べます","box":{"x":4.4,"y":45.6,"w":1.2,"h":2.5},"look":{"x":4.1,"y":45.1,"w":1.7,"h":3.5}},{"img":0,"x":86.6,"y":37.8,"t":"「n件を削除」を押し、確認で「OK」を押します","box":{"x":81.9,"y":34.8,"w":9.4,"h":6}}]}</script>
+  </div>
+<!-- /demo:bulk -->
+  <p>一覧の左端にチェックを付けて「n件を削除」を押すと、まとめてゴミ箱に入れられます。見出しのチェックで、表示中のQRをすべて選べます。チェックできるのは自分が作成者のQR（管理者は全部）です。</p>
+  <p>削除したQRが読み取られるとケイクリエイトのサイトへ移動し、管理者がゴミ箱から元に戻せます。</p>
+</section>
+
+<section id="rank">
+  <h2><span class="no">10</span>ランキングとExcel</h2>
+<!-- demo:rank -->
+  <h3>動きで見る：QRバトルのランキングとExcel</h3>
+  <div class="demo" data-demo="rank">
+    <div class="stage" style="width:1180px"><img src="img/demo-rank.png" alt="ランキング" width="1440" height="620" loading="lazy"></div>
+    <div class="side"><h4>この順に押します</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-rank.png","w":1440,"h":620,"dw":1180,"alt":"ランキング"}],"steps":[{"img":0,"x":8.3,"y":30,"t":"左のメニューの「ランキング」を押します","box":{"x":0.7,"y":26.9,"w":15.3,"h":6.1}},{"img":0,"x":28.3,"y":18.9,"t":"月を選びます（QRバトルは集計最終日の月。直近30日・月別も選べます）","box":{"x":19.9,"y":16,"w":25.5,"h":5.8}},{"img":0,"x":51.3,"y":18.9,"t":"部門・ジャンルで絞り込めます","box":{"x":46,"y":16,"w":10.7,"h":5.8},"more":[{"x":62.6,"y":18.9}]},{"img":0,"x":58.3,"y":50.7,"t":"開始日から1か月間の読み取り回数の順に並びます","box":{"x":18.7,"y":44.3,"w":79.3,"h":46.5},"look":{"x":18.4,"y":43.6,"w":79.9,"h":47.7}},{"img":0,"x":47.9,"y":32.7,"t":"平均・上位層・中間層・低層の読み取り回数（営業の目安）","box":{"x":30.2,"y":30.6,"w":35.5,"h":4.2},"look":{"x":30,"y":30.3,"w":35.8,"h":4.8}},{"img":0,"x":93.1,"y":32.7,"t":"「Excel出力」でエントリーシートの形に書き出します","box":{"x":89.4,"y":29.8,"w":7.3,"h":5.8}}]}</script>
+  </div>
+<!-- /demo:rank -->
+  <p>「ランキング」で <b>QRバトル 2026年12月（集計最終日 12/1〜12/31）</b> のように月を選びます。集計最終日がその月に入るQRが、開始日から1か月間の読み取り回数の順に並びます。部門・ジャンルで絞り込めます。期間がまだ終わっていないQRには「集計中 n日目」、まだ始まっていないQRには「開始前」と出ます。</p>
+  <p>同じ選択肢から「直近30日」や月別のランキングにも切り替えられます。</p>
+  <h3>参考値（平均・上位層・中間層・低層）</h3>
+  <p>「営業ツールPDF」ボタンの右に、表示中のQR（読み取り1回以上）の平均読み取り回数と、回数順に3等分した上位層・中間層・低層それぞれの平均が出ます。ジャンルや部門で絞ると、その目安になります。営業先に「このジャンルの平均はこのくらい」と伝えるときの参考にしてください。</p>
+  <h3>エントリーシートの出力（Excel）</h3>
+  <p>QRバトルの月を選んでいるときに「Excel出力」が出ます。提出用エントリーシートの形（NO.・原稿ID・QRコードID・エントリー部門・クライアント名・媒体種・部数・個数・開始日・終了日）で書き出します。クライアント名と部数は名称から入ります。名称に版名があれば媒体種は「自社紙媒体」、無ければ「他社紙媒体」で部数は空欄です。<b>原稿IDだけは手で記入</b>してください。部門で絞ってから出力すると、部門別のシートになります。</p>
+</section>
+
+<section id="sales">
+  <h2><span class="no">11</span>営業ツールPDF</h2>
+<!-- demo:sales -->
+  <h3>動きで見る：営業ツールPDFを作る</h3>
+  <div class="demo" data-demo="sales">
+    <div class="stage" style="width:1000px"><img src="img/demo-sales-1.png" alt="ランキングの上の段" width="1210" height="374" loading="lazy"></div>
+    <div class="side"><h4>この順に押します</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-sales-1.png","w":1210,"h":374,"dw":1000,"alt":"ランキングの上の段"},{"src":"img/demo-sales-2.png","w":980,"h":988,"dw":980,"alt":"営業ツールPDF"}],"steps":[{"img":0,"x":10.5,"y":34.2,"t":"ランキングの「営業ツールPDF」を押します","box":{"x":4.7,"y":29.4,"w":11.5,"h":9.6}},{"img":1,"x":23.8,"y":14.1,"t":"ジャンルを選ぶと、直近3か月の読み取り上位が並びます","box":{"x":11.1,"y":12.2,"w":25.4,"h":3.6}},{"img":1,"x":4.2,"y":29.4,"t":"上位（最大8件）にチェックが入っています。付け外しで入れ替えられます","box":{"x":3.5,"y":28.6,"w":1.5,"h":1.5}},{"img":1,"x":69.4,"y":56.1,"t":"右がプレビュー（A4縦1枚）","box":{"x":42.8,"y":18.7,"w":53.3,"h":74.7},"look":{"x":42.3,"y":18.3,"w":54.1,"h":75.5}},{"img":1,"x":92.9,"y":14.1,"t":"「PDFを出力」でダウンロードします","box":{"x":88.2,"y":12.2,"w":9.4,"h":3.6}}]}</script>
+  </div>
+<!-- /demo:sales -->
+  <p>ランキングの「営業ツールPDF」で、ジャンルを選ぶと直近3か月（今月と前2か月。今月は今日まで）の読み取りが多い順に候補が並び、上位8件にチェックが入ります。右のプレビューを見ながら、チェックの付け外しで出力する案件を入れ替えられます（最大8件。6件以下なら1枚に大きめに並びます）。「PDFを出力」で A4 縦1枚の PDF をダウンロードします。</p>
+  <p>各案件には順位・クライアント名・号と版・3か月合計・1日平均・最多の週・週ごとの棒グラフが入ります。候補はジャンル内の上位40件までで、読み取りが0回のQRは出ません。</p>
+</section>
+
+<section id="trash">
+  <h2><span class="no">12</span>ゴミ箱 <span class="admin">管理者</span></h2>
+<!-- demo:trash -->
+  <h3>動きで見る：削除したQRを元に戻す</h3>
+  <div class="demo" data-demo="trash">
+    <div class="stage" style="width:1000px"><img src="img/demo-trash.png" alt="ゴミ箱" width="1424" height="319" loading="lazy"></div>
+    <div class="side"><h4>この順に押します</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-trash.png","w":1424,"h":319,"dw":1000,"alt":"ゴミ箱"}],"steps":[{"img":0,"x":8.4,"y":70.8,"t":"左のメニューの「ゴミ箱」を押します（管理者だけに出ます）","box":{"x":0.7,"y":64.9,"w":15.4,"h":11.9}},{"img":0,"x":59,"y":34.2,"t":"削除したQRが読み取られると、ケイクリエイトのサイトへ移動します","box":{"x":18.9,"y":26.6,"w":80.2,"h":15},"look":{"x":18.6,"y":25.4,"w":80.8,"h":17.6}},{"img":0,"x":95.2,"y":63.5,"t":"「元に戻す」で、また使えるようになります","box":{"x":92.3,"y":57.8,"w":5.8,"h":11.3}}]}</script>
+  </div>
+<!-- /demo:trash -->
+  <p>削除したQRの一覧です。管理者のメニューにだけ出ます。「元に戻す」で、そのQRは元の飛び先に戻り、また使えるようになります。</p>
+</section>
+
+<section id="import">
+  <h2><span class="no">13</span>一括取り込み <span class="admin">管理者</span></h2>
+<!-- demo:import -->
+  <h3>動きで見る：まとめて登録する（一括取り込み）</h3>
+  <div class="demo" data-demo="import">
+    <div class="stage" style="width:1164px"><img src="img/demo-import.png" alt="一括取り込み" width="1164" height="372" loading="lazy"></div>
+    <div class="side"><h4>この順に押します</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-import.png","w":1164,"h":372,"dw":1164,"alt":"一括取り込み"}],"steps":[{"img":0,"x":14.5,"y":51.9,"t":"1行に「名称」と「飛び先URL」を、タブかカンマで区切って貼り付けます","box":{"x":2.5,"y":32.8,"w":95,"h":38.2},"type":"2612江南版_パン工房むぎ_HP\thttps://…"},{"img":0,"x":16.3,"y":79.6,"t":"登録する担当者を選びます（その人の名義・ID で登録されます）","box":{"x":10.9,"y":74.7,"w":10.9,"h":9.7}},{"img":0,"x":26.1,"y":79.6,"t":"「取り込む」を押します。同じ名称＋URLがあるものは飛ばします","box":{"x":22.6,"y":74.7,"w":6.9,"h":9.7}}]}</script>
+  </div>
+<!-- /demo:import -->
+  <p>「新規登録」の下にある管理者用の欄です。1行に<b>名称</b>と<b>飛び先URL</b>を、タブ・カンマ・空白のどれかで区切って貼り付けます（Excel からそのまま貼れます）。ジャンルは「その他」、QRバトルの集計開始日と部門はなしで登録されます（あとで一覧・詳細から直せます）。一度に500件まで。同じ名称＋URLがすでにあるものは飛ばします。</p>
+  <p>「登録する担当者」で選んだ人の名義・ID で登録されます。</p>
+</section>
+
+<section id="mobile">
+  <h2><span class="no">14</span>スマホで使う</h2>
+<!-- demo:mobile -->
+  <h3>動きで見る：スマホで使う</h3>
+  <div class="demo" data-demo="mobile">
+    <div class="stage" style="width:300px"><img src="img/demo-mobile-1.png" alt="スマホのQR一覧" width="780" height="1520" loading="lazy"></div>
+    <div class="side"><h4>見る場所</h4><ol class="steps"></ol><div class="ctl"><button type="button" data-act="pause">一時停止</button><button type="button" data-act="again">最初から</button></div></div>
+    <script type="application/json">{"images":[{"src":"img/demo-mobile-1.png","w":780,"h":1520,"dw":300,"alt":"スマホのQR一覧"}],"steps":[{"img":0,"x":50,"y":12,"t":"上のメニュー：QR一覧・新規登録・ランキング（横にスライド）","box":{"x":0,"y":8.6,"w":100,"h":6.8},"look":{"x":-0.5,"y":8.3,"w":101,"h":7.4}},{"img":0,"x":50,"y":18.2,"t":"フォルダも横に並びます。押すとその人のQRだけになります","box":{"x":0,"y":15.4,"w":100,"h":5.7},"look":{"x":-0.5,"y":15.1,"w":101,"h":6.2}},{"img":0,"x":52.6,"y":37,"t":"「使い方ガイド」でこのガイドが開きます","box":{"x":36.1,"y":34.7,"w":32.8,"h":4.7},"look":{"x":35.6,"y":34.4,"w":33.8,"h":5.3}},{"img":0,"x":48.7,"y":61.3,"t":"検索はパソコンと同じです","box":{"x":33.3,"y":58.9,"w":57.7,"h":4.7},"type":"ラーメン"},{"img":0,"x":50,"y":85.1,"t":"表は横にスライドして見ます。行を押すと詳細が開きます","box":{"x":4.4,"y":74.6,"w":91.3,"h":486.6},"look":{"x":3.3,"y":74.1,"w":93.3,"h":487.7}}]}</script>
+  </div>
+<!-- /demo:mobile -->
+  <p>スマホでも同じURLで使えます。メニューとフォルダは上に横並びになります。表は横にスライドして見てください。</p>
+</section>
+
+<section id="faq">
+  <h2><span class="no">15</span>よくある質問</h2>
+  <dl class="faq">
+    <dt>開いても「ログイン情報が取得できません」と出ます。</dt>
+    <dd>個人の Google アカウントで開いています。会社のアカウントに切り替えてから開き直してください。</dd>
+    <dt>読み取り回数が「−」になっています。</dt>
+    <dd>読み取り記録サーバーに一時的につながらないときの表示です。少し待ってページを読み込み直してください。QRの転送自体は動いています。</dd>
+    <dt>自分で読み取って試したら回数に入りますか？</dt>
+    <dd>入ります。人がスマホで読み取った回数を数えます。LINE などのリンクプレビュー取得は数えません。</dd>
+    <dt>集計開始日を入れ忘れました。</dt>
+    <dd>一覧から詳細を開き、集計開始日を入れて保存してください。名称に号と版があれば候補が入った状態で開きます。</dd>
+    <dt>他の人のQRを直したいです。</dt>
+    <dd>作成者本人か管理者に依頼してください。担当者の変更だけは誰でもできます。</dd>
+    <dt>間違えて削除しました。</dt>
+    <dd>管理者がゴミ箱から元に戻せます。管理者に相談してください。</dd>
+  </dl>
+</section>
+
+</main>
+</div>
+<footer>QRコード管理 使い方ガイド ・ 株式会社 ケイ・クリエイト</footer>
+<!-- demo-js:start -->
+<script>
+// 動きで見る（ポインターのアニメーション）: guide/build-demos.js が index.html に入れる。ここを直したら build-demos.js を実行
+// データ（各 .demo の中の <script type="application/json">）:
+//   images: [{ src, w, h, dw }]  … 写真（w,h は画面上の大きさ・dw は表示する幅 px）
+//   steps:  [{ img, x, y, t, look:{x,y,w,h}, type:'文字', drag:{x,y}, more:[{x,y}] }]  … x,y,w,h は写真の左上=0%・右下=100%
+//   look = 押さずに「ここを見る」（枠で囲む）／ type = 入力する文字を見せる／ drag = つまんで引く／ more = 続けて押す場所
+// テスト用: window.__demoGo('id', n) でアニメーションなしに n 番目（0 から）を表示して止める
+(function () {
+  var reduce = window.matchMedia && matchMedia('(prefers-reduced-motion: reduce)').matches;
+  var ARROW = '<svg viewBox="0 0 24 24" width="30" height="30"><path d="M4 2l15 11.2-6.6.9 3.9 7.6-2.9 1.4-3.8-7.6L4 20z" fill="#fff" stroke="#0f172a" stroke-width="1.6" stroke-linejoin="round"/></svg>';
+  var demos = {};
+  document.querySelectorAll('.demo[data-demo]').forEach(function (box) {
+    var data = JSON.parse(box.querySelector('script[type="application/json"]').textContent);
+    var steps = data.steps, images = data.images, stage = box.querySelector('.stage'), img = stage.querySelector('img'), list = box.querySelector('ol.steps');
+    var maxDw = Math.max.apply(null, images.map(function (m) { return m.dw; }));
+    if (maxDw > 520) box.classList.add('wide');
+    var preloaded = false;
+    function preload() { if (preloaded) return; preloaded = true; images.forEach(function (m) { var pre = new Image(); pre.src = m.src; }); } // 見えたときに、このデモの写真を先に読み込む（切り替えで待たない・ページを開いた時は読まない）
+    list.innerHTML = steps.map(function (s) { return '<li>' + s.t + '</li>'; }).join('');
+    var lis = list.querySelectorAll('li');
+    var now = document.createElement('div'); now.className = 'now'; now.textContent = '▶ ' + steps[0].t; stage.insertAdjacentElement('afterend', now);
+    var ptr = document.createElement('div'); ptr.className = 'ptr'; ptr.innerHTML = ARROW; stage.appendChild(ptr);
+    var ring = document.createElement('div'); ring.className = 'ring'; stage.appendChild(ring);
+    var hl = document.createElement('div'); hl.className = 'hl'; stage.appendChild(hl);
+    var typing = document.createElement('div'); typing.className = 'typing'; stage.appendChild(typing);
+    var badge = document.createElement('div'); badge.className = 'badge'; stage.appendChild(badge);
+    var i = -1, cur = -1, timer = null, visible = false, paused = false, pauseBtn = box.querySelector('[data-act=pause]');
+    var HOME = { x: 70, y: 4 };
+    function place(el, p) { el.style.left = p.x + '%'; el.style.top = p.y + '%'; }
+    function wait(ms, fn) { clearTimeout(timer); timer = setTimeout(fn, reduce ? Math.min(ms, 300) : ms); }
+    function setImg(k, instant, done) {
+      if (k === cur) return done && done();
+      var m = images[k]; cur = k;
+      function swap() { img.src = m.src; img.width = m.w; img.height = m.h; img.alt = m.alt || img.alt; stage.style.width = m.dw + 'px'; }
+      if (instant || img.getAttribute('src') === m.src) { swap(); return done && done(); }
+      img.classList.add('fade'); hl.classList.remove('on'); typing.classList.remove('on');
+      setTimeout(function () { swap(); img.classList.remove('fade'); done && setTimeout(done, 200); }, 180);
+    }
+    function mark(n) {
+      if (n >= 0) now.textContent = (n + 1) + '. ' + steps[n].t;
+      lis.forEach(function (li, k) { li.classList.toggle('on', k === n); li.classList.toggle('done', n >= 0 && k < n); });
+    }
+    function showHl(s) { if (s.look) { hl.style.left = s.look.x + '%'; hl.style.top = s.look.y + '%'; hl.style.width = s.look.w + '%'; hl.style.height = s.look.h + '%'; hl.classList.add('on'); } else hl.classList.remove('on'); }
+    function placeTyping(s) { // 入力欄のすぐ下（下の端に近いときは上）
+      var b = s.box || { x: s.x - 10, y: s.y - 2, w: 20, h: 4 };
+      typing.style.left = Math.max(0, Math.min(b.x, 60)) + '%';
+      if (b.y + b.h > 82) { typing.style.top = 'auto'; typing.style.bottom = (100 - b.y + 1) + '%'; }
+      else { typing.style.bottom = 'auto'; typing.style.top = (b.y + b.h + 1) + '%'; }
+    }
+    function click(p, done) { place(ring, p); ring.classList.remove('go'); void ring.offsetWidth; ring.classList.add('go'); ptr.classList.add('press'); setTimeout(function () { ptr.classList.remove('press'); }, 160); wait(500, done); }
+    function typeText(s, done) {
+      placeTyping(s); typing.textContent = ''; typing.classList.add('on');
+      var txt = s.type, k = 0;
+      (function one() { k++; typing.textContent = txt.slice(0, k); if (k < txt.length) wait(reduce ? 0 : 70, one); else wait(1300, function () { typing.classList.remove('on'); done(); }); })();
+    }
+    function show(n) {
+      mark(n);
+      var s = steps[n];
+      typing.classList.remove('on');
+      setImg(s.img || 0, false, function () {
+        var p = { x: s.x, y: s.y }; place(ptr, p); place(badge, p); badge.textContent = n + 1; badge.style.opacity = 1; ptr.style.opacity = 1;
+        showHl(s);
+        wait(1000, function () {
+          if (s.look) return next(1900);
+          if (s.drag) { ptr.classList.add('press', 'drag'); wait(250, function () { place(ptr, s.drag); place(badge, s.drag); wait(1300, function () { ptr.classList.remove('press', 'drag'); next(1300); }); }); return; }
+          var more = (s.more || []).slice();
+          (function chain() {
+            click(p, function () {
+              if (s.type && !more.length) return typeText(s, function () { next(500); });
+              if (!more.length) return next(1500);
+              p = more.shift(); place(ptr, p); place(badge, p); wait(650, chain);
+            });
+          })();
+        });
+      });
+    }
+    function reset() { i = -1; mark(-1); badge.style.opacity = 0; hl.classList.remove('on'); typing.classList.remove('on'); place(ptr, HOME); }
+    function next(ms) {
+      wait(ms, function () {
+        if (!visible || paused) { timer = null; return; }
+        i++;
+        if (i >= steps.length) { reset(); return wait(1800, function () { setImg(steps[0].img || 0, false, function () { next(0); }); }); }
+        show(i);
+      });
+    }
+    function start() { if (timer || paused) return; next(400); }
+    function stop() { clearTimeout(timer); timer = null; }
+    setImg(steps[0].img || 0, true); place(ptr, HOME); place(badge, HOME); badge.style.opacity = 0;
+    if ('IntersectionObserver' in window) new IntersectionObserver(function (es) { visible = es[0].isIntersecting; if (visible) { preload(); start(); } else stop(); }, { threshold: .3 }).observe(stage);
+    else { visible = true; preload(); start(); }
+    function setPaused(v) { paused = v; pauseBtn.textContent = paused ? '再生' : '一時停止'; }
+    pauseBtn.onclick = function () { setPaused(!paused); stop(); if (!paused) next(200); };
+    box.querySelector('[data-act=again]').onclick = function () { stop(); setPaused(false); reset(); setImg(steps[0].img || 0, false, function () { next(100); }); };
+    // 手順の一覧を押すと、その手順から
+    lis.forEach(function (li, k) { li.onclick = function () { stop(); setPaused(false); i = k - 1; next(0); }; });
+    // テスト用: n 番目をアニメーションなしで表示して止める
+    demos[box.dataset.demo] = function (n) {
+      stop(); setPaused(true); preload(); box.classList.add('instant');
+      var s = steps[n]; i = n; mark(n); setImg(s.img || 0, true);
+      var p = { x: s.x, y: s.y }; place(ptr, p); place(badge, p); badge.textContent = n + 1; badge.style.opacity = 1; ptr.style.opacity = 1;
+      showHl(s);
+      if (s.type) { placeTyping(s); typing.textContent = s.type; typing.classList.add('on'); } else typing.classList.remove('on');
+      void box.offsetWidth; box.classList.remove('instant');
+      return { img: images[s.img || 0].src, x: s.x, y: s.y };
+    };
+  });
+  window.__demoGo = function (id, n) { return demos[id] ? demos[id](n) : null; };
+  window.__demoIds = Object.keys(demos);
+})();
+</script>
+<!-- demo-js:end -->
+</body>
+</html>
