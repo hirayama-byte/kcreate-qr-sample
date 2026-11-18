@@ -178,6 +178,13 @@
   select.inl.div { background: #fef3c7; color: #92400e; border-color: #fde68a; }
   select.inl.none { color: var(--muted); }
   select.inl.own { background: #f8fafc; max-width: 120px; }
+  /* 差替済ボタン（2026-11-11） */
+  .rep { height: 26px; font-size: 12px; padding: 0 8px; border-radius: 13px; border: 1px solid var(--line); background: #fff; color: var(--muted); white-space: nowrap; cursor: pointer; font-weight: 700; }
+  .rep.on { background: #dcfce7; border-color: #86efac; color: #166534; }
+  .rep:disabled { cursor: default; opacity: .85; }
+  span.rep { display: inline-flex; align-items: center; cursor: default; }
+  #rows td .nm, #rows td .url { min-width: 190px; } /* 列が増えても名称が1〜2文字ずつ折り返さないように（はみ出す分は横にスクロール） */
+  #rows td:nth-child(4) { padding-left: 6px; padding-right: 6px; } /* 差替の列は詰める */
 
   /* ランキング */
   .rank td:first-child { width: 56px; }
@@ -223,6 +230,7 @@
   .sp-row .num { font-family: var(--mono); font-size: 12px; flex: none; }
   .sp-row.off .nm { color: var(--muted); font-weight: 400; }
   .sp-prevhead { display: flex; align-items: center; gap: 10px; margin-bottom: 12px; font-size: 13px; font-weight: 500; }
+  #spHide.on { background: #fef2f2; color: #b91c1c; border-color: #fecaca; }
   .sp-paper { background: #e2e8f0; padding: 16px; border-radius: 8px; }
   .sp-paper canvas { display: block; width: 100%; height: auto; background: #fff; box-shadow: 0 6px 20px rgba(15,23,42,.18); }
 
@@ -284,7 +292,7 @@
     </nav>
     <div class="side-sec">Folders</div>
     <div id="folders"></div>
-    <div class="tools"><div class="tools-h">他のツール</div><a href="https://script.google.com/a/macros/k-create.co.jp/s/AKfycbyR5vFkZm9bwKSyN2lZvcZcUUim_p-zxiiIx22jHiU8TRB81ZxAtyjvB6dtFjg-_GxH/exec" target="_blank" rel="noopener" title="見積作成を新しいタブで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>見積作成<span class="ext">↗</span></a><a href="https://hirayama-byte.github.io/kcreate-dm-sample/" target="_blank" rel="noopener" title="一斉DM管理を新しいタブで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9 6 9-6M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M3 7a2 2 0 012-2h14a2 2 0 012 2"/></svg>一斉DM管理<span class="ext">↗</span></a><a href="https://hirayama-byte.github.io/kureyon-haifu-area/map.html#area=ichinomiya" target="_blank" rel="noopener" title="配布エリアMAPを新しいタブで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15"/></svg>配布エリアMAP<span class="ext">↗</span></a><a href="https://drive.google.com/drive/folders/1YoF1dmyjjA3O7a2sFe1EZfC9j9eCiYr5" target="_blank" rel="noopener" title="管理表（Google ドライブ）を新しいタブで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>管理表<span class="ext">↗</span></a></div>
+    <div class="tools"><div class="tools-h">他のツール</div><a href="https://script.google.com/a/macros/k-create.co.jp/s/AKfycbyrmqWNNo1ZBQN4eK43n5H6MEHcQWGnR5qGDSDyXj_cs2BHaGDtw-N1cC-lBITiDyqDQQ/exec" target="_blank" rel="noopener" title="反響事例管理を新しいタブで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M21 15a2 2 0 01-2 2H7l-4 4V5a2 2 0 012-2h14a2 2 0 012 2z"/></svg>反響事例管理<span class="ext">↗</span></a><a href="https://script.google.com/a/macros/k-create.co.jp/s/AKfycbyR5vFkZm9bwKSyN2lZvcZcUUim_p-zxiiIx22jHiU8TRB81ZxAtyjvB6dtFjg-_GxH/exec" target="_blank" rel="noopener" title="見積作成を新しいタブで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M14 2H6a2 2 0 00-2 2v16a2 2 0 002 2h12a2 2 0 002-2V8z"/><path d="M14 2v6h6M8 13h8M8 17h5"/></svg>見積作成<span class="ext">↗</span></a><a href="https://hirayama-byte.github.io/kcreate-dm-sample/" target="_blank" rel="noopener" title="一斉DM管理を新しいタブで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7l9 6 9-6M3 7v10a2 2 0 002 2h14a2 2 0 002-2V7M3 7a2 2 0 012-2h14a2 2 0 012 2"/></svg>一斉DM管理<span class="ext">↗</span></a><a href="https://hirayama-byte.github.io/kureyon-haifu-area/map.html#area=ichinomiya" target="_blank" rel="noopener" title="配布エリアMAPを新しいタブで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 3L3 6v15l6-3 6 3 6-3V3l-6 3-6-3zM9 3v15M15 6v15"/></svg>配布エリアMAP<span class="ext">↗</span></a><a href="https://drive.google.com/drive/folders/1YoF1dmyjjA3O7a2sFe1EZfC9j9eCiYr5" target="_blank" rel="noopener" title="管理表（Google ドライブ）を新しいタブで開く"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M3 7a2 2 0 012-2h4l2 2h8a2 2 0 012 2v8a2 2 0 01-2 2H5a2 2 0 01-2-2z"/></svg>管理表<span class="ext">↗</span></a></div>
     <button class="me" id="meBtn" title="名前を変更"><span class="avatar" id="meAv">?</span><div><span id="me"></span><small id="meRole"></small></div><span class="edit-ico">名前を変更</span></button>
   </aside>
 
@@ -322,7 +330,7 @@
             <select id="qGenre"><option value="">ジャンル：すべて</option></select>
             <select id="qDiv"><option value="">部門：すべて</option></select>
             <button class="btn danger hide" id="delSel" title="チェックした案件をゴミ箱に入れます（管理者が元に戻せます）"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 6h18M8 6V4h8v2M6 6l1 14h10l1-14"/></svg><span id="delSelN">0</span>件を削除</button>
-            <span class="count" id="count"></span>
+            <span class="count" id="count"></span><button class="btn" id="listReload" title="最新の一覧と回数を読み込む（回数は5分ごとに新しくなります）" style="margin-left:8px;padding:4px 10px;font-size:12.5px">↻ 更新</button>
           </div>
           <div class="tbl">
             <table>
@@ -330,6 +338,7 @@
                 <th class="chk"><input type="checkbox" id="chkAll" title="表示中の、削除できる案件をすべて選択"></th>
                 <th data-sort="qid" class="hide-sm">ID</th>
                 <th data-sort="name">名称</th>
+                <th data-sort="replaced" title="旧QRなどから差し替え済みかどうか。押すと切り替わります">差替</th>
                 <th data-sort="genre">ジャンル</th>
                 <th data-sort="division">部門</th>
                 <th data-sort="ownerName" class="hide-sm">作成者</th>
@@ -460,6 +469,8 @@
       return v;
     });
   };
+  // RangeList（'I12' などのセルの並び）に同じ値を書く
+  Sheet.prototype.getRangeList = function (list) { var self = this; self.rangeListCalls = (self.rangeListCalls || 0) + 1; return { setValue: function (v) { list.forEach(function (a) { self.getRange(a).setValue(v); }); return this; } }; };
   Sheet.prototype.getRange = function (a, c, nr, nc) {
     if (typeof a === 'string') {
       var m = /^([A-Z]+):([A-Z]+)$/.exec(a);
@@ -527,8 +538,11 @@
       now: null, // テストで日時を固定するとき Date を入れる
       SpreadsheetApp: {
         create: function (n) { var id = 'sheet' + (Object.keys(store).length + 1); store[id] = new Spreadsheet(id, n); return store[id]; },
-        openById: function (id) { if (!store[id]) throw new Error('no sheet ' + id); return store[id]; }
+        openById: function (id) { env.openCount = (env.openCount || 0) + 1; if (!store[id]) throw new Error('no sheet ' + id); return store[id]; },
+        flush: function () { env.flushCount = (env.flushCount || 0) + 1; }
       },
+      // CacheService（ScriptCache）: 実行をまたいで残る。期限は見ない（テストでは env.cache.clear() で消す）
+      CacheService: { getScriptCache: function () { return env.cache; } },
       PropertiesService: { getScriptProperties: function () { return {
         getProperty: function (k) { return props.hasOwnProperty(k) ? props[k] : null; },
         setProperty: function (k, v) { props[k] = String(v); }
@@ -541,7 +555,7 @@
       Utilities: { formatDate: function (d, tz, f) {
         var t = new Date(d.getTime() + 9 * 3600000);
         return f.replace('yyyy', t.getUTCFullYear()).replace('MM', pad(t.getUTCMonth() + 1)).replace('dd', pad(t.getUTCDate()))
-          .replace('HH', pad(t.getUTCHours())).replace('mm', pad(t.getUTCMinutes()));
+          .replace('HH', pad(t.getUTCHours())).replace('mm', pad(t.getUTCMinutes())).replace('ss', pad(t.getUTCSeconds()));
       } },
       LockService: { getScriptLock: function () { return { waitLock: function () {}, tryLock: function () { return true; }, releaseLock: function () {} }; } },
       ContentService: {
@@ -550,6 +564,16 @@
       },
       Logger: { log: function () {} },
       props: props
+    };
+    var cstore = {};
+    env.cache = {
+      get: function (k) { return cstore.hasOwnProperty(k) ? cstore[k] : null; },
+      getAll: function (ks) { var o = {}; ks.forEach(function (k) { if (cstore.hasOwnProperty(k)) o[k] = cstore[k]; }); return o; },
+      put: function (k, v) { if (String(v).length > 100000) throw new Error('Argument too large'); cstore[k] = String(v); },
+      putAll: function (o) { Object.keys(o).forEach(function (k) { env.cache.put(k, o[k]); }); },
+      remove: function (k) { delete cstore[k]; },
+      clear: function (prefix) { Object.keys(cstore).forEach(function (k) { if (!prefix || k.indexOf(prefix) === 0) delete cstore[k]; }); },
+      keys: function () { return Object.keys(cstore); }
     };
     env.worker = fakeWorker();
     env.UrlFetchApp = {
@@ -591,7 +615,18 @@
         return res(200, out);
       }
       if (p === '/api/totals') {
+        w.totalsCalls = (w.totalsCalls || 0) + 1;
         Object.keys(w.daily).forEach(function (k) { var s = k.split('|'); if (s[0] >= from && s[0] <= to) out[s[1]] = (out[s[1]] || 0) + w.daily[k]; });
+        return res(200, out);
+      }
+      if (p === '/api/dailies' && m === 'post') {
+        if (w.noDailies) return res(404, { error: 'not found' }); // 古い Worker のふり
+        w.dailiesCalls = (w.dailiesCalls || 0) + 1;
+        JSON.parse(opt.payload).forEach(function (x) {
+          var code = String(x.code).toLowerCase(), o = {}, f2 = x.from || '0000-00-00', t2 = x.to || '9999-99-99';
+          Object.keys(w.daily).forEach(function (k) { var s2 = k.split('|'); if (s2[1] === code && s2[0] >= f2 && s2[0] <= t2) o[s2[0]] = w.daily[k]; });
+          out[code] = o;
+        });
         return res(200, out);
       }
       if (p === '/api/daily') {
@@ -624,11 +659,12 @@ var BASE_URL = 'https://www.k-create.co.jp/qr/'; // QRに入れるURLの頭（�
 var DEFAULT_GENRES = ['グルメ', 'スクール', 'ショップ', '暮らし', 'トータルケア', 'クリニック', '介護・福祉', '終活・士業', '企業', 'その他'];
 // battle_start = QRバトル集計開始日（任意・yyyy-MM-dd）。配布開始日。ランキング「QRバトル」はこの日から1か月ずつ区切って数える
 // qid = QRのID（担当者ごとの英字＋6桁の連番。例 A000001。削除しても番号は再利用しない）／division = QRバトルのエントリー部門（任意）
-var QR_HEAD = ['code', 'name', 'genre', 'url', 'owner_email', 'owner_name', 'created', 'updated', 'deleted', 'deleted_by', 'battle_start', 'qid', 'division'];
+var QR_HEAD = ['code', 'name', 'genre', 'url', 'owner_email', 'owner_name', 'created', 'updated', 'deleted', 'deleted_by', 'battle_start', 'qid', 'division', 'replaced'];
+// replaced（N列・2026-11-11〜）= 差替済なら '1'（旧サイトのQRなどから新しいQRに差し替えた印。一覧のボタンで切り替え）
 var MEMBER_HEAD = ['email', 'name', 'prefix']; // prefix = IDの英字（A, B, … Z, AA, AB …）。管理者はシートで変えてもよい
 var DEFAULT_DIVISIONS = ['表紙巻頭部門', 'グルメ部門', 'ビューティー部門', 'ヘルス部門', 'スクール部門', 'ハウジング部門', 'その他部門', '求人部門'];
 var CODE_CHARS = 'abcdefghjkmnpqrstuvwxyz23456789'; // 見間違えやすい i l o 0 1 を除く
-var SCHEMA_V = '3'; // シートの列構成の版。列を足したら上げる（init が1回だけ ensureColumns_/ensureIds_ を走らせる）
+var SCHEMA_V = '4'; // 4: replaced（差替済）列 2026-11-11 ／ // シートの列構成の版。列を足したら上げる（init が1回だけ ensureColumns_/ensureIds_ を走らせる）
 
 function doGet(e) {
   // ?page=guide → 使い方ガイド（同じURLなので会社アカウントでログインした人だけ見られる）
@@ -679,7 +715,7 @@ function ensureColumns_() {
   var w = Math.max(sh.getLastColumn(), QR_HEAD.length);
   var head = sh.getRange(1, 1, 1, w).getValues()[0];
   for (var i = 10; i < QR_HEAD.length; i++) {
-    if (String(head[i] || '') !== QR_HEAD[i]) { sh.getRange(1, i + 1).setValue(QR_HEAD[i]); sh.getRange('K:M').setNumberFormat('@'); }
+    if (String(head[i] || '') !== QR_HEAD[i]) { sh.getRange(1, i + 1).setValue(QR_HEAD[i]); sh.getRange('K:N').setNumberFormat('@'); }
   }
   var mem = sheet_('members');
   if (String(mem.getRange(1, 3).getValue() || '') !== 'prefix') mem.getRange(1, 3).setValue('prefix');
@@ -697,23 +733,72 @@ function ensureSheet_(ss, name, head) {
 }
 
 // ---------- 共通 ----------
-function ss_() { return SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID') || SHEET_ID); }
-function sheet_(name) { return ss_().getSheetByName(name); }
+// 1回の実行の中では開き直さない（openById は毎回時間がかかる・2026-11-03）
+var ssMemo_ = null, shMemo_ = {};
+function ss_() { return ssMemo_ || (ssMemo_ = SpreadsheetApp.openById(PropertiesService.getScriptProperties().getProperty('SHEET_ID') || SHEET_ID)); }
+function sheet_(name) {
+  if (shMemo_[name]) return shMemo_[name];
+  var sh = ss_().getSheetByName(name); if (sh) shMemo_[name] = sh;
+  return sh;
+}
 function myEmail_() { return String(Session.getActiveUser().getEmail() || '').toLowerCase(); }
 function now_() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm'); }
 function ymd_(d) { return Utilities.formatDate(d, TZ, 'yyyy-MM-dd'); }
 function str_(v) { return v instanceof Date ? ymd_(v) : String(v); }
+function nowSec_() { return Utilities.formatDate(new Date(), TZ, 'yyyy-MM-dd HH:mm:ss'); }
+// 更新日時: シートが日時として扱うと Date で返るので、秒までの文字にそろえる（同時編集の確認用・2026-11-03）
+function ts_(v) { return v instanceof Date ? Utilities.formatDate(v, TZ, 'yyyy-MM-dd HH:mm:ss') : String(v == null ? '' : v); }
+// ロック待ちが長いときは日本語で案内する（英語の Lock timeout を出さない）
+function lockOrThrow_(lock, ms) {
+  try { lock.waitLock(ms); } catch (e) { throw new Error('ほかの人の処理と重なりました。少し待ってからもう一度お試しください'); }
+}
 
 // 設定系の小さいシートは1回の実行の中で何度も読むので、読んだ結果を覚えておく（書いたら bust_ で消す）
-var MEMO_SHEETS = { genres: 1, divisions: 1, admins: 1, members: 1, settings: 1 };
+// qr も1回の実行の中では1回だけ読む（書いたら bust_('qr')）。設定系の小さいシートは CacheService にも10分置く（50人が開くたびに5枚読まない・2026-11-03）
+// ※ シートを手で直したときは、最長10分で反映（すぐ反映したいときは管理者が ?… ではなく、画面で名前などを保存すると消える）
+var MEMO_SHEETS = { genres: 1, divisions: 1, admins: 1, members: 1, settings: 1, qr: 1 };
+var CACHE_SHEETS = { genres: 1, divisions: 1, admins: 1, members: 1, settings: 1 };
+var CACHE_SEC = 600;
 var memo_ = {};
-function bust_(name) { delete memo_[name]; }
+function cache_() { try { return typeof CacheService !== 'undefined' ? CacheService.getScriptCache() : null; } catch (e) { return null; } }
+function bust_(name) {
+  delete memo_[name];
+  var c = CACHE_SHEETS[name] && cache_(); if (c) try { c.remove('rows:' + name); } catch (e) {}
+}
 function rows_(name) {
   if (MEMO_SHEETS[name] && memo_[name]) return memo_[name];
+  var c = CACHE_SHEETS[name] && cache_(), hit = null;
+  if (c) try { hit = c.get('rows:' + name); } catch (e) {}
+  if (hit) { try { return (memo_[name] = JSON.parse(hit)); } catch (e) {} }
   var sh = sheet_(name);
   var n = sh.getLastRow();
   var v = n < 2 ? [] : sh.getRange(2, 1, n - 1, sh.getLastColumn()).getValues();
   if (MEMO_SHEETS[name]) memo_[name] = v;
+  if (c) try { var js = JSON.stringify(v); if (js.length < 90000) c.put('rows:' + name, js, CACHE_SEC); } catch (e) {}
+  return v;
+}
+// 大きい JSON を CacheService に分けて置く（1件 100KB まで）。fn は無いときだけ呼ぶ
+function cachedJson_(key, sec, fn) {
+  var c = cache_();
+  if (c) {
+    try {
+      var head = c.get(key);
+      if (head) {
+        var n = +head, keys = [];
+        for (var i = 0; i < n; i++) keys.push(key + ':' + i);
+        var parts = c.getAll(keys), str = '';
+        for (i = 0; i < n && str !== null; i++) str = parts[keys[i]] == null ? null : str + parts[keys[i]];
+        if (str !== null) return JSON.parse(str);
+      }
+    } catch (e) {}
+  }
+  var v = fn();
+  if (c && v != null) {
+    try {
+      var js = JSON.stringify(v), size = 90000, m = Math.max(1, Math.ceil(js.length / size)), put = {};
+      if (m <= 20) { for (var j = 0; j < m; j++) put[key + ':' + j] = js.slice(j * size, (j + 1) * size); c.putAll(put, sec); c.put(key, String(m), sec); }
+    } catch (e) {}
+  }
   return v;
 }
 
@@ -753,7 +838,8 @@ function prefixAt_(i) { return i < 26 ? String.fromCharCode(65 + i) : String.fro
 // その人の英字。無ければ空いている英字を順に割り当てて members に書く。
 // A は最初の管理者（オーナー）のために取っておき、他の人は B から（オーナーが別の英字を持っていれば A も使う）
 function prefixFor_(email) {
-  var sh = sheet_('members'), rows = rows_('members'), used = {}, idx = -1, owner = ownerEmail_(), ownerHas = false;
+  // ロックの中で、キャッシュではなくシートの最新を読む（同時に初めて作る2人に同じ英字を付けない・2026-11-03）
+  var sh = sheet_('members'), nm = sh.getLastRow(), rows = nm < 2 ? [] : sh.getRange(2, 1, nm - 1, Math.max(sh.getLastColumn(), 3)).getValues(), used = {}, idx = -1, owner = ownerEmail_(), ownerHas = false;
   rows.forEach(function (r, i) {
     var p = String(r[2] || '').trim().toUpperCase();
     if (p) used[p] = true;
@@ -795,6 +881,8 @@ function ensureIds_() {
       seq[p]++;
       sh.getRange(t.i + 2, 12).setValue(fmtQid_(p, seq[p]));
     });
+    bust_('qr');
+    SpreadsheetApp.flush(); // 次の人がロックを取ったとき、確定した値を読むように
   } finally { lock.releaseLock(); }
 }
 
@@ -802,8 +890,8 @@ function qrObj_(r) {
   return {
     code: String(r[0]), name: String(r[1]), genre: String(r[2]), url: String(r[3]),
     ownerEmail: String(r[4]).toLowerCase(), ownerName: String(r[5]),
-    created: str_(r[6]), updated: str_(r[7]), deleted: r[8] ? str_(r[8]) : '', deletedBy: String(r[9] || ''),
-    battleStart: r[10] ? str_(r[10]) : '', qid: String(r[11] || ''), division: String(r[12] || '')
+    created: str_(r[6]), updated: ts_(r[7]), deleted: r[8] ? str_(r[8]) : '', deletedBy: String(r[9] || ''),
+    battleStart: r[10] ? str_(r[10]) : '', qid: String(r[11] || ''), division: String(r[12] || ''), replaced: String(r[13] || '') === '1'
   };
 }
 
@@ -843,16 +931,23 @@ function worker_(method, path, body) {
 }
 function putLink_(code, url, deleted) { worker_('put', '/api/links/' + code, { url: url, deleted: !!deleted }); }
 // 期間の回数 { code: n }
-function totals_(from, to) { return worker_('get', '/api/totals?from=' + from + '&to=' + to); }
+// 5分だけ CacheService に置く（50人が一覧を開くたびに記録サーバーへ聞かない・2026-11-03）
+var TOTALS_SEC = 300;
+function totals_(from, to) { return cachedJson_('tot:' + from + ':' + to, TOTALS_SEC, function () { return worker_('get', '/api/totals?from=' + from + '&to=' + to); }); }
 // 複数の期間を同時に取る（fetchAll で並列）→ [{code: n}, ...]
 function totalsMany_(ranges) {
-  var reqs = ranges.map(function (r) {
-    return { url: WORKER_URL + '/api/totals?from=' + r[0] + '&to=' + r[1], method: 'get', muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + WORKER_TOKEN } };
+  var out = ranges.map(function () { return null; }), miss = [];
+  ranges.forEach(function (r, i) { var hit = cachedJson_('tot:' + r[0] + ':' + r[1], TOTALS_SEC, function () { miss.push(i); return null; }); if (hit) out[i] = hit; });
+  if (!miss.length) return out;
+  var reqs = miss.map(function (i) {
+    return { url: WORKER_URL + '/api/totals?from=' + ranges[i][0] + '&to=' + ranges[i][1], method: 'get', muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + WORKER_TOKEN } };
   });
-  return UrlFetchApp.fetchAll(reqs).map(function (res) {
+  UrlFetchApp.fetchAll(reqs).forEach(function (res, j) {
     if (res.getResponseCode() !== 200) throw new Error('読み取り記録サーバーとの通信に失敗しました（' + res.getResponseCode() + '）。少し待ってもう一度お試しください');
-    return JSON.parse(res.getContentText());
+    var i = miss[j], v = JSON.parse(res.getContentText());
+    out[i] = cachedJson_('tot:' + ranges[i][0] + ':' + ranges[i][1], TOTALS_SEC, function () { return v; }); // 覚えておく
   });
+  return out;
 }
 // QRごとに別々の期間の回数 [{code, from, to}] → { code: n }
 function counts_(list) { return worker_('post', '/api/counts', list); }
@@ -932,7 +1027,7 @@ function boot() {
 
 function listTrash() {
   if (!isAdmin_(myEmail_())) throw new Error('ゴミ箱は管理者のみ見られます');
-  return rows_('qr').map(qrObj_).filter(function (q) { return q.deleted; });
+  return rows_('qr').map(qrObj_).filter(function (q) { return q.deleted; }).sort(function (a, b) { return a.deleted < b.deleted ? 1 : a.deleted > b.deleted ? -1 : 0; });
 }
 
 function newCode_(used) {
@@ -949,71 +1044,84 @@ function createQr(f) {
   var email = myEmail_();
   var name = memberMap_()[email] || email;
   var lock = LockService.getScriptLock();
-  lock.waitLock(10000);
+  lockOrThrow_(lock, 15000);
   try {
+    bust_('qr'); // ロックの中で最新を読む（1回だけ。コードの重複確認と ID の番号の両方に使う）
     var used = {};
     rows_('qr').forEach(function (r) { used[String(r[0])] = true; });
     var code = newCode_(used);
     var t = now_();
     putLink_(code, v.url, false);
     var qid = nextQid_(prefixFor_(email));
-    var row = [code, v.name, v.genre, v.url, email, name, t, t, '', '', v.battleStart, qid, v.division];
+    var row = [code, v.name, v.genre, v.url, email, name, t, nowSec_(), '', '', v.battleStart, qid, v.division, ''];
     sheet_('qr').appendRow(row);
+    bust_('qr');
+    SpreadsheetApp.flush(); // ロックを外す前に確定（次の人が古いシートを読んで同じ ID を付けないように・2026-11-03）
     return qrObj_(row);
   } finally { lock.releaseLock(); }
 }
 
+// 1行を読む・確かめる・まとめて書く（2026-11-03）
+function qrRow_(code) {
+  var sh = sheet_('qr'), row = findQrRow_(code), raw = sh.getRange(row, 1, 1, QR_HEAD.length).getValues()[0];
+  return { sh: sh, row: row, raw: raw, q: qrObj_(raw) };
+}
+// 画面が持っている「更新」と違えば、ほかの人が先に変えている（seen が無い＝古い画面からの呼び出しは確かめない）
+function checkFresh_(x, seen) {
+  if (seen != null && String(seen) !== '' && String(seen) !== x.q.updated) throw new Error('ほかの人が先にこのQRを変更しました。一覧の「更新」を押して最新にしてから、もう一度お試しください');
+}
+function writeRow_(x) {
+  x.raw[7] = nowSec_();
+  x.sh.getRange(x.row, 1, 1, QR_HEAD.length).setValues([x.raw]);
+  bust_('qr');
+  var q = qrObj_(x.raw), m = memberMap_();
+  q.ownerName = m[q.ownerEmail] || q.ownerName || q.ownerEmail;
+  return q; // 画面は一覧を取り直さずに、この行だけ差し替える
+}
 function updateQr(code, f) {
   var v = checkFields_(f);
-  var sh = sheet_('qr');
-  var row = findQrRow_(code);
-  var q = qrObj_(sh.getRange(row, 1, 1, QR_HEAD.length).getValues()[0]);
+  var x = qrRow_(code), q = x.q;
   if (!canEdit_(q, myEmail_())) throw new Error('このQRを変更できるのは作成者（' + q.ownerName + '）と管理者だけです');
+  checkFresh_(x, f.seen);
   if (v.url !== q.url) putLink_(code, v.url, !!q.deleted);
   if (f.ownerEmail !== undefined && String(f.ownerEmail).toLowerCase() !== q.ownerEmail) {
     var o = checkMember_(f.ownerEmail); // 担当者の変更は作成者・管理者とも可（他人のQRは changeOwner で）
-    sh.getRange(row, 5, 1, 2).setValues([[o.email, o.name]]); // IDはそのまま（発行時の担当者の英字が残る）
+    x.raw[4] = o.email; x.raw[5] = o.name; // IDはそのまま（発行時の担当者の英字が残る）
   }
-  sh.getRange(row, 2, 1, 3).setValues([[v.name, v.genre, v.url]]);
-  sh.getRange(row, 8).setValue(now_());
-  sh.getRange(row, 11).setValue(v.battleStart);
-  sh.getRange(row, 13).setValue(v.division);
-  return true;
+  x.raw[1] = v.name; x.raw[2] = v.genre; x.raw[3] = v.url; x.raw[10] = v.battleStart; x.raw[12] = v.division;
+  return writeRow_(x);
 }
 
 // 担当者の引き継ぎ（担当者だけを変える）。名前を登録したメンバーなら、他人のQRでも変えられる（2026-10-28 オーナー決定）。ID はそのまま
-function changeOwner(code, ownerEmail) {
+function changeOwner(code, ownerEmail, seen) {
   var me = myEmail_();
   if (!memberMap_()[me]) throw new Error('先に名前を登録してください');
   var o = checkMember_(ownerEmail);
-  var sh = sheet_('qr');
-  var row = findQrRow_(code);
-  var q = qrObj_(sh.getRange(row, 1, 1, QR_HEAD.length).getValues()[0]);
+  var x = qrRow_(code), q = x.q;
   if (q.deleted) throw new Error('ゴミ箱のQRは変えられません');
-  if (o.email === q.ownerEmail) return true;
-  sh.getRange(row, 5, 1, 2).setValues([[o.email, o.name]]);
-  sh.getRange(row, 8).setValue(now_());
-  return true;
+  if (o.email === q.ownerEmail) { q.ownerName = o.name; return q; }
+  checkFresh_(x, seen);
+  x.raw[4] = o.email; x.raw[5] = o.name;
+  return writeRow_(x);
 }
 
-// 一覧のプルダウンから。ジャンルと部門だけを変える（作成者本人と管理者）
+// 一覧のプルダウン・ボタンから。ジャンル・部門・差替済だけを変える（作成者本人と管理者）
 function updateQrFields(code, f) {
-  var sh = sheet_('qr');
-  var row = findQrRow_(code);
-  var q = qrObj_(sh.getRange(row, 1, 1, QR_HEAD.length).getValues()[0]);
+  var x = qrRow_(code), q = x.q;
   if (!canEdit_(q, myEmail_())) throw new Error('このQRを変更できるのは作成者（' + q.ownerName + '）と管理者だけです');
   f = f || {};
+  checkFresh_(x, f.seen);
   if (f.genre !== undefined) {
     if (genres_().indexOf(f.genre) < 0) throw new Error('ジャンルを選んでください');
-    sh.getRange(row, 3).setValue(f.genre);
+    x.raw[2] = f.genre;
   }
   if (f.division !== undefined) {
     var dv = String(f.division || '').trim();
     if (dv && divisions_().indexOf(dv) < 0) throw new Error('エントリー部門は一覧から選んでください');
-    sh.getRange(row, 13).setValue(dv);
+    x.raw[12] = dv;
   }
-  sh.getRange(row, 8).setValue(now_());
-  return true;
+  if (f.replaced !== undefined) x.raw[13] = f.replaced ? '1' : ''; // 差替済（2026-11-11）
+  return writeRow_(x);
 }
 
 function deleteQr(code) {
@@ -1024,6 +1132,7 @@ function deleteQr(code) {
   if (!canEdit_(q, email)) throw new Error('このQRを削除できるのは作成者（' + q.ownerName + '）と管理者だけです');
   putLink_(code, q.url, true);
   sh.getRange(row, 9, 1, 2).setValues([[now_(), email]]);
+  bust_('qr');
   return true;
 }
 
@@ -1043,8 +1152,11 @@ function deleteQrs(codes) {
   if (!hit.length) return { deleted: 0 };
   for (var k = 0; k < hit.length; k += 200) worker_('post', '/api/links', hit.slice(k, k + 200).map(function (h) { return { code: h.q.code, url: h.q.url, deleted: true }; }));
   var sh = sheet_('qr'), t = now_();
-  hit.forEach(function (h) { sh.getRange(h.row, 9, 1, 2).setValues([[t, email]]); });
-  return { deleted: hit.length };
+  // 1行ずつ書かず、削除日と削除した人をそれぞれ1回で書く（500件でも2回・2026-11-03）
+  sh.getRangeList(hit.map(function (h) { return 'I' + h.row; })).setValue(t);
+  sh.getRangeList(hit.map(function (h) { return 'J' + h.row; })).setValue(email);
+  bust_('qr');
+  return { deleted: hit.length, codes: hit.map(function (h) { return h.q.code; }) };
 }
 
 function restoreQr(code) {
@@ -1053,6 +1165,7 @@ function restoreQr(code) {
   var row = findQrRow_(code);
   putLink_(code, String(sh.getRange(row, 4).getValue()), false);
   sh.getRange(row, 9, 1, 2).setValues([['', '']]);
+  bust_('qr');
   return true;
 }
 
@@ -1096,6 +1209,13 @@ function getSalesReport(genre, months, limit) {
     .map(function (q) { q.count = counts[q.code]; q.ownerName = members[q.ownerEmail] || q.ownerName || q.ownerEmail; return q; })
     .sort(function (a, b) { return b.count - a.count || String(a.qid).localeCompare(String(b.qid)); });
   var items = all.slice(0, limit);
+  if (items.length) {
+    try { // まとめて1回（2026-11-03〜の記録サーバー）
+      var many = worker_('post', '/api/dailies', items.map(function (q) { return { code: q.code, from: from, to: to }; }));
+      items.forEach(function (q) { q.daily = many[q.code] || {}; });
+      return { genre: genre, from: from, to: to, months: months, days: days, items: items, candidates: all.length };
+    } catch (e) { console.error(e); } // 古い記録サーバー（/api/dailies が無い）なら下の1件ずつで
+  }
   var reqs = items.map(function (q) {
     return { url: WORKER_URL + '/api/daily?code=' + q.code + '&from=' + from + '&to=' + to, method: 'get', muteHttpExceptions: true, headers: { Authorization: 'Bearer ' + WORKER_TOKEN } };
   });
@@ -1184,8 +1304,9 @@ function importQrs(items, ownerEmail) {
   var email = me, name = memberMap_()[me] || me;
   if (ownerEmail && String(ownerEmail).toLowerCase() !== me) { var o = checkMember_(ownerEmail); email = o.email; name = o.name; }
   var lock = LockService.getScriptLock();
-  lock.waitLock(20000);
+  lockOrThrow_(lock, 20000);
   try {
+    bust_('qr');
     var existing = {}, used = {};
     rows_('qr').forEach(function (r) { used[String(r[0])] = true; if (!r[8]) existing[String(r[1]) + '\n' + String(r[3])] = true; });
     var prefix = prefixFor_(email), seq = +nextQid_(prefix).slice(prefix.length) - 1;
@@ -1198,7 +1319,7 @@ function importQrs(items, ownerEmail) {
         if (existing[nm + '\n' + u]) { skipped.push({ line: i + 1, name: nm }); return; }
         var code = newCode_(used); used[code] = true;
         seq++;
-        rows.push([code, nm, genre, u, email, name, t, t, '', '', '', fmtQid_(prefix, seq), '']);
+        rows.push([code, nm, genre, u, email, name, t, t, '', '', '', fmtQid_(prefix, seq), '', '']);
         existing[nm + '\n' + u] = true;
       } catch (e) { errors.push({ line: i + 1, name: nm || u, error: e.message }); }
     });
@@ -1206,6 +1327,8 @@ function importQrs(items, ownerEmail) {
       for (var k = 0; k < rows.length; k += 200) worker_('post', '/api/links', rows.slice(k, k + 200).map(function (r) { return { code: r[0], url: r[3], deleted: false }; }));
       var sh = sheet_('qr');
       sh.getRange(sh.getLastRow() + 1, 1, rows.length, QR_HEAD.length).setValues(rows);
+      bust_('qr');
+      SpreadsheetApp.flush(); // ロックを外す前に確定
     }
     return { created: rows.map(function (r) { return { qid: r[11], code: r[0], name: r[1], url: r[3] }; }), skipped: skipped, errors: errors };
   } finally { lock.releaseLock(); }
@@ -1339,11 +1462,12 @@ function meter(n, max) {
 }
 
 // ---------- QR画像 ----------
-function drawQr(text, px) {
+function drawQr(text, px, quiet) {
   var qr = qrcode(0, 'M');
   qr.addData(text);
   qr.make();
-  var n = qr.getModuleCount(), quiet = 4, cell = Math.max(1, Math.floor(px / (n + quiet * 2)));
+  if (quiet == null) quiet = 4; // ダウンロード用は 0（余白なし・制作でトリミング不要）
+  var n = qr.getModuleCount(), cell = Math.max(1, Math.floor(px / (n + quiet * 2)));
   var size = cell * (n + quiet * 2);
   var cv = document.createElement('canvas');
   cv.width = cv.height = size;
@@ -1355,7 +1479,7 @@ function drawQr(text, px) {
 }
 function safeName(s) { return String(s).replace(/[\\/:*?"<>|\s]+/g, '_').slice(0, 60); }
 function downloadJpeg(q, px) {
-  var cv = drawQr(shortUrl(q.code), px);
+  var cv = drawQr(shortUrl(q.code), px, 0);
   var a = document.createElement('a');
   a.href = cv.toDataURL('image/jpeg', 0.95);
   a.download = safeName(q.name) + '_' + q.code + '.jpg';
@@ -1411,7 +1535,10 @@ $('myNameSave').onclick = function () {
   $('myNameErr').textContent = '';
   call('setMyName', $('myName').value).then(function (n) {
     S.me.name = n; showMe(); toast('名前を「' + n + '」にしました');
-    $('nameModal').classList.remove('on'); loadList();
+    $('nameModal').classList.remove('on');
+    (S.list || []).forEach(function (q) { if (q.ownerEmail === S.me.email) { q.ownerName = n; prepQ(q); } });
+    var mm = (S.members || []).filter(function (m) { return m.email === S.me.email; })[0]; if (mm) mm.name = n; else (S.members = S.members || []).push({ email: S.me.email, name: n });
+    if (S.list) loadList();
   }).catch(function (e) { $('myNameErr').textContent = e.message; }).then(function () { b.disabled = false; });
 };
 
@@ -1443,16 +1570,30 @@ function showTab(tab) {
 }
 
 // ---------- 一覧 ----------
+// 一覧の取り直し: 3分以内なら手元のものを使う（「更新」ボタン・force で取り直す）。変更・作成・削除は手元を書き換える（2026-11-03）
+var LIST_FRESH_MS = 180000;
+function prepList(list) { list.forEach(prepQ); return list; }
+// 並べ替え用の値を先に作っておく（1文字入力するたびに正規表現をかけない）
+function prepQ(q) { q._no = issueNo(q.name); q._hay = [q.name, q.url, q.genre, q.ownerName, q.code, q.qid, q.division].join(' ').toLowerCase(); return q; }
+function putQ(q) { // サーバーが返した1行で差し替える（回数は手元のものを残す）
+  var old = S.list.filter(function (x) { return x.code === q.code; })[0];
+  if (old) { q.last30 = old.last30; q.total = old.total; S.list[S.list.indexOf(old)] = prepQ(q); }
+  else { if (q.last30 == null) q.last30 = 0; if (q.total == null) q.total = 0; S.list.unshift(prepQ(q)); }
+  return q;
+}
+function dropQ(codes) { var m = {}; codes.forEach(function (c) { m[c] = 1; }); S.list = S.list.filter(function (q) { return !m[q.code]; }); }
 function applyList(list) {
-  S.list = list; S.page = 1;
+  S.list = prepList(list); S.page = 1; S.listAt = Date.now();
   $('countWarn').classList.toggle('hide', !list.some(function (q) { return q.last30 == null; }));
   renderFolders(); renderList();
 }
-function loadList() {
+function loadList(force) {
   if (S.bootList) { S.bootList = false; applyList(S.list); return Promise.resolve(); }
-  $('rows').innerHTML = '<tr><td colspan="10" class="loading">読み込み中…</td></tr>';
+  var noCounts = S.list && S.list.some(function (q) { return q.last30 == null; }); // 回数が取れていない（記録サーバーにつながらなかった）ときは毎回取り直す
+  if (!force && !noCounts && S.list && S.listAt && Date.now() - S.listAt < LIST_FRESH_MS) { renderFolders(); renderList(); return Promise.resolve(); }
+  $('rows').innerHTML = '<tr><td colspan="11" class="loading">読み込み中…</td></tr>';
   return call('listQr').then(applyList)
-    .catch(function (e) { $('rows').innerHTML = '<tr><td colspan="10" class="err">' + esc(e.message) + '</td></tr>'; });
+    .catch(function (e) { $('rows').innerHTML = '<tr><td colspan="11" class="err">' + esc(e.message) + '</td></tr>'; });
 }
 function renderFolders() {
   var by = {};
@@ -1470,7 +1611,13 @@ $('folders').onclick = function (e) {
   if ($('list').classList.contains('hide')) { showTab('list'); return; }
   renderFolders(); renderList();
 };
-['q', 'qField', 'qGenre', 'qDiv'].forEach(function (id) { $(id).addEventListener('input', function () { S.page = 1; renderList(); }); });
+var qTimer = null;
+['q', 'qField', 'qGenre', 'qDiv'].forEach(function (id) { $(id).addEventListener('input', function () {
+  S.page = 1; clearTimeout(qTimer);
+  if (id === 'q') qTimer = setTimeout(renderList, 200); else renderList(); // 文字の入力は打ち終わってから（1文字ごとに全件を並べ替えない）
+}); });
+var JA = (typeof Intl !== 'undefined' && Intl.Collator) ? new Intl.Collator('ja') : null;
+function cmpJa(a, b) { return JA ? JA.compare(a, b) : String(a).localeCompare(String(b), 'ja'); }
 document.querySelector('#list thead').onclick = function (e) {
   var th = e.target.closest('th'); if (!th || !th.dataset.sort) return; // チェック列は並べ替えない
   var k = th.dataset.sort;
@@ -1493,13 +1640,13 @@ function filtered() {
     if (g && q.genre !== g) return false;
     if (dv && q.division !== dv) return false;
     if (!kw) return true;
-    var hay = f === 'name' ? q.name : f === 'url' ? q.url : [q.name, q.url, q.genre, q.ownerName, q.code, q.qid, q.division].join(' ');
-    return hay.toLowerCase().indexOf(kw) >= 0;
+    var hay = f === 'name' ? q.name.toLowerCase() : f === 'url' ? q.url.toLowerCase() : (q._hay || prepQ(q)._hay);
+    return hay.indexOf(kw) >= 0;
   }).sort(function (a, b) {
     var x = a[S.sort], y = b[S.sort];
     var num = S.sort === 'last30' || S.sort === 'total';
-    var c = S.sort === 'qid' ? cmpQid(a, b) : num ? (x == null ? -1 : x) - (y == null ? -1 : y) : String(x).localeCompare(String(y), 'ja');
-    if (c === 0 && S.sort !== 'qid') c = issueNo(a.name) - issueNo(b.name); // 同じ値なら名称の号（2612 など年月）が新しい方を上に
+    var c = S.sort === 'qid' ? cmpQid(a, b) : num ? (x == null ? -1 : x) - (y == null ? -1 : y) : cmpJa(String(x), String(y));
+    if (c === 0 && S.sort !== 'qid') c = (a._no != null ? a._no : issueNo(a.name)) - (b._no != null ? b._no : issueNo(b.name)); // 同じ値なら名称の号（2612 など年月）が新しい方を上に
     if (c === 0 && S.sort !== 'qid') c = cmpQid(a, b); // それも同じなら ID の番号が大きい方を新しいとみなす
     return S.desc ? -c : c;
   });
@@ -1521,16 +1668,18 @@ function renderList() {
   $('rows').innerHTML = (list.length ? shown.map(function (q) {
     return '<tr class="row" data-c="' + esc(q.code) + '"><td class="chk"><input type="checkbox" class="sel" data-c="' + esc(q.code) + '"' + (canEdit(q) ? (S.sel[q.code] ? ' checked' : '') : ' disabled title="削除できるのは作成者（' + esc(q.ownerName) + '）と管理者だけです"') + '></td><td class="hide-sm"><span class="code">' + esc(q.qid || '−') + '</span></td>' +
       '<td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td>' +
-      '<td>' + (canEdit(q) ? inlineSel(q, 'genre') : tag(q.genre)) + '</td><td>' + (canEdit(q) ? inlineSel(q, 'division') : divTag(q.division)) + '</td><td class="hide-sm">' + (S.me.name ? inlineSel(q, 'owner') : who(q.ownerName)) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
+      '<td>' + repBtn(q) + '</td><td>' + (canEdit(q) ? inlineSel(q, 'genre') : tag(q.genre)) + '</td><td>' + (canEdit(q) ? inlineSel(q, 'division') : divTag(q.division)) + '</td><td class="hide-sm">' + (S.me.name ? inlineSel(q, 'owner') : who(q.ownerName)) + '</td><td class="date hide-sm">' + esc(q.created.slice(0, 10)) + '</td>' +
       '<td class="date hide-sm">' + (q.battleStart ? esc(q.battleStart) : '<span class="muted">−</span>') + '</td>' +
       '<td class="num">' + meter(q.last30, max) + '</td><td class="num">' + fmt(q.total) + '</td></tr>';
-  }).join('') : '<tr><td colspan="10" class="loading">該当するQRはありません</td></tr>') +
-    (shown.length < list.length ? '<tr><td colspan="10" class="loading"><button class="btn" id="moreBtn">さらに' + Math.min(PAGE, list.length - shown.length) + '件を表示（残り ' + (list.length - shown.length) + '件）</button></td></tr>' : '');
+  }).join('') : '<tr><td colspan="11" class="loading">該当するQRはありません</td></tr>') +
+    (shown.length < list.length ? '<tr><td colspan="11" class="loading"><button class="btn" id="moreBtn">さらに' + Math.min(PAGE, list.length - shown.length) + '件を表示（残り ' + (list.length - shown.length) + '件）</button></td></tr>' : '');
   updateSel();
 }
+$('listReload').onclick = function () { var b = this; b.disabled = true; loadList(true).then(function () { b.disabled = false; toast('最新にしました'); }); };
 $('rows').onclick = function (e) {
   if (e.target.closest('#moreBtn')) { S.page++; renderList(); return; }
   if (e.target.closest('select.inl')) return; // プルダウンの操作では詳細を開かない
+  var rb = e.target.closest('.rep'); if (rb) { if (rb.tagName === 'BUTTON') toggleReplaced(rb); return; } // 差替済ボタン
   if (e.target.closest('input.sel') || e.target.closest('td.chk')) return; // チェックでは詳細を開かない
   var tr = e.target.closest('tr.row'); if (!tr) return;
   openDetail(S.list.filter(function (q) { return q.code === tr.dataset.c; })[0]);
@@ -1563,16 +1712,37 @@ $('delSel').onclick = function () {
   var names = codes.map(function (c) { return (S.list.filter(function (q) { return q.code === c; })[0] || {}).name; }).filter(Boolean);
   if (!confirm('チェックした ' + codes.length + ' 件を削除しますか？\n' + names.slice(0, 5).map(function (n) { return '・' + n; }).join('\n') + (names.length > 5 ? '\n…ほか ' + (names.length - 5) + ' 件' : '') + '\n\n削除後に読み取られると、ケイクリエイトのサイトへ移動します。（管理者はゴミ箱から元に戻せます）')) return;
   var b = this; b.disabled = true;
-  call('deleteQrs', codes).then(function (r) { S.sel = {}; toast(r.deleted + ' 件を削除しました'); return loadList(); })
+  call('deleteQrs', codes).then(function (r) { S.sel = {}; toast(r.deleted + ' 件を削除しました'); dropQ(r.codes || codes); renderFolders(); renderList(); })
     .catch(function (e) { toast(e.message); }).then(function () { b.disabled = false; });
 };
 
+// 差替済ボタン（2026-11-11）: 押すと「未差替」⇔「差替済」。変えられるのは作成者本人と管理者（ほかの人には表示だけ）
+function repBtn(q) {
+  var lbl = q.replaced ? '✓ 差替済' : '未差替';
+  if (!canEdit(q)) return '<span class="rep' + (q.replaced ? ' on' : '') + '" title="変更できるのは作成者（' + esc(q.ownerName) + '）と管理者だけです">' + lbl + '</span>';
+  return '<button type="button" class="rep' + (q.replaced ? ' on' : '') + '" data-c="' + esc(q.code) + '" title="押すと' + (q.replaced ? '「未差替」に戻します' : '「差替済」にします') + '">' + lbl + '</button>';
+}
+function toggleReplaced(b) {
+  var q = S.list.filter(function (x) { return x.code === b.dataset.c; })[0]; if (!q) return;
+  var on = !q.replaced; b.disabled = true;
+  call('updateQrFields', q.code, { seen: q.updated, replaced: on }).then(function (nq) {
+    if (nq && nq.code) q.updated = nq.updated; q.replaced = on;
+    b.outerHTML = repBtn(q); toast(on ? '「' + q.name + '」を差替済にしました' : '「' + q.name + '」を未差替に戻しました');
+  }).catch(function (e) { toast(e.message); b.disabled = false; });
+}
 // 一覧のプルダウン（ジャンル・部門）。変えるとすぐ保存
 function inlineSel(q, field) {
   var isDiv = field === 'division', isOwn = field === 'owner', cur = isOwn ? q.ownerEmail : (q[field] || '');
-  var opts = isOwn ? ownerOptions(q.ownerEmail, q.ownerName) : isDiv ? '<option value="">（なし）</option>' + divOptions(cur) : genreOptions(cur);
+  var opts = isOwn ? '<option value="' + esc(q.ownerEmail) + '" selected>' + esc(q.ownerName) + '</option>' : isDiv ? '<option value="">（なし）</option>' + divOptions(cur) : genreOptions(cur);
   return '<select class="inl' + (isDiv ? ' div' : isOwn ? ' own' : '') + (isDiv && !cur ? ' none' : '') + '" data-f="' + field + '" data-c="' + esc(q.code) + '" title="' + (isOwn ? '担当者を変更（引き継ぎ。ID はそのまま）' : isDiv ? 'エントリー部門を変更' : 'ジャンルを変更') + '">' + opts + '</select>';
 }
+// 担当者のプルダウン: 押した（フォーカスした）ときに選択肢を全員分にする
+function fillOwnerSel(e) {
+  var sel = e.target.closest && e.target.closest('select.inl.own'); if (!sel || sel.dataset.full) return;
+  var q = S.list.filter(function (x) { return x.code === sel.dataset.c; })[0]; if (!q) return;
+  sel.innerHTML = ownerOptions(q.ownerEmail, q.ownerName); sel.value = q.ownerEmail; sel.dataset.full = '1';
+}
+$('rows').addEventListener('mousedown', fillOwnerSel); $('rows').addEventListener('focusin', fillOwnerSel); $('rows').addEventListener('touchstart', fillOwnerSel, { passive: true });
 $('rows').addEventListener('change', function (e) {
   var sel = e.target.closest('select.inl'); if (!sel) return;
   var q = S.list.filter(function (x) { return x.code === sel.dataset.c; })[0]; if (!q) return;
@@ -1580,14 +1750,15 @@ $('rows').addEventListener('change', function (e) {
   sel.disabled = true;
   if (field === 'owner') { // 担当者の引き継ぎ（誰でも）。フォルダの件数も変わるので描き直す
     var beforeOwn = q.ownerEmail, nm = sel.selectedOptions[0].textContent;
-    call('changeOwner', q.code, val).then(function () {
-      q.ownerEmail = val; q.ownerName = nm; toast('担当者を「' + nm + '」に変更しました'); renderFolders(); renderList();
+    call('changeOwner', q.code, val, q.updated).then(function (nq) {
+      if (nq && nq.code) putQ(nq); else { q.ownerEmail = val; q.ownerName = nm; }
+      toast('担当者を「' + nm + '」に変更しました'); renderFolders(); renderList();
     }).catch(function (e) { sel.value = beforeOwn; toast(e.message); sel.disabled = false; });
     return;
   }
-  var before = q[field] || '', f = {}; f[field] = val;
-  call('updateQrFields', q.code, f).then(function () {
-    q[field] = val; toast((field === 'genre' ? 'ジャンル' : 'エントリー部門') + 'を「' + (val || 'なし') + '」に変更しました');
+  var before = q[field] || '', f = { seen: q.updated }; f[field] = val;
+  call('updateQrFields', q.code, f).then(function (nq) {
+    if (nq && nq.code) { q.updated = nq.updated; } q[field] = val; prepQ(q); toast((field === 'genre' ? 'ジャンル' : 'エントリー部門') + 'を「' + (val || 'なし') + '」に変更しました');
     sel.classList.toggle('none', field === 'division' && !val);
   }).catch(function (e) { sel.value = before; toast(e.message); }).then(function () { sel.disabled = false; });
 });
@@ -1653,7 +1824,7 @@ function openDetail(q) {
       if (v === q.ownerEmail) { b.disabled = false; return; }
       var nm = $('eOwner2').selectedOptions[0].textContent;
       if (!confirm('「' + q.name + '」の担当者を ' + nm + ' に変更します。よろしいですか？')) { b.disabled = false; return; }
-      call('changeOwner', q.code, v).then(function () { toast('担当者を「' + nm + '」に変更しました'); closeModal(); loadList(); })
+      call('changeOwner', q.code, v, q.updated).then(function (nq) { if (nq && nq.code) putQ(nq); toast('担当者を「' + nm + '」に変更しました'); closeModal(); renderFolders(); renderList(); })
         .catch(function (e) { $('eErr').textContent = e.message; b.disabled = false; });
     };
   }
@@ -1665,14 +1836,15 @@ function openDetail(q) {
       if (url !== q.url && !confirm('飛び先URLを変更します。印刷済みのQRも新しい飛び先に移動します。よろしいですか？')) { b.disabled = false; return; }
       var payload = { name: $('eName').value, genre: $('eGenre').value, url: url, battleStart: $('eBattle').value, division: $('eDivision').value };
       if ($('eOwner')) payload.ownerEmail = $('eOwner').value;
+      payload.seen = q.updated; // ほかの人が先に変えていたら止める
       call('updateQr', q.code, payload)
-        .then(function () { toast('保存しました'); closeModal(); loadList(); })
+        .then(function (nq) { if (nq && nq.code) putQ(nq); toast('保存しました'); closeModal(); renderFolders(); renderList(); })
         .catch(function (e) { $('eErr').textContent = e.message; b.disabled = false; });
     };
     $('eDel').onclick = function () {
       if (!confirm('「' + q.name + '」を削除しますか？\n削除後に読み取られると、ケイクリエイトのサイトへ移動します。（管理者はゴミ箱から元に戻せます）')) return;
       var b = this; b.disabled = true;
-      call('deleteQr', q.code).then(function () { toast('削除しました'); closeModal(); loadList(); })
+      call('deleteQr', q.code).then(function () { toast('削除しました'); closeModal(); dropQ([q.code]); renderFolders(); renderList(); })
         .catch(function (e) { $('eErr').textContent = e.message; b.disabled = false; });
     };
   }
@@ -1785,6 +1957,7 @@ $('nSave').onclick = function () {
   call('createQr', { name: $('nName').value, genre: $('nGenre').value, url: $('nUrl').value, battleStart: $('nBattle').value, division: $('nDivision').value })
     .then(function (q) {
       q.ownerName = S.me.name; q.last30 = 0; q.total = 0;
+      if (S.list) putQ(q);
       $('made').innerHTML = '<div id="madeQr"></div>' +
         '<dl class="kv"><dt>ID</dt><dd><span class="code">' + esc(q.qid) + '</span></dd><dt>名称</dt><dd><b>' + esc(q.name) + '</b></dd><dt>コード</dt><dd><span class="code">' + esc(q.code) + '</span></dd>' +
         '<dt>QRの中身</dt><dd class="mono" style="font-size:12px">' + esc(shortUrl(q.code)) + '</dd><dt>飛び先</dt><dd style="font-size:12.5px">' + esc(q.url) + '</dd>' +
@@ -1811,6 +1984,7 @@ $('impRun').onclick = function () {
   if (!items.length) { $('impErr').textContent = '取り込む行がありません'; return; }
   var b = this; b.disabled = true; $('impCount').textContent = items.length + ' 行を取り込み中…';
   call('importQrs', items, $('impOwner').value).then(function (r) {
+    S.listAt = 0; // 次に一覧を開いたとき取り直す
     $('impCount').textContent = '';
     $('impResult').innerHTML =
       '<p style="margin:8px 0 4px"><b>' + r.created.length + ' 件を登録</b>' + (r.skipped.length ? '／' + r.skipped.length + ' 件は同じ名称＋URLがあるため飛ばしました' : '') + (r.errors.length ? '／<span class="err" style="margin:0">' + r.errors.length + ' 件はエラー</span>' : '') + '</p>' +
@@ -1827,19 +2001,19 @@ function buildPeriods() {
   var t = new Date();
   // QRバトルは「集計最終日（開始日から1か月の最終日）がどの月か」で選ぶ。今月を先頭に、前11か月〜先3か月
   var bo = [];
-  for (var k = 3; k >= -11; k--) {
+  for (var k = 3; k >= -23; k--) { // 2年分選べる（2026-11-03・以前は前11か月まで）
     var bd = new Date(t.getFullYear(), t.getMonth() + k, 1), last = new Date(bd.getFullYear(), bd.getMonth() + 1, 0).getDate();
     bo.push(['battle:' + bd.getFullYear() + '-' + ('0' + (bd.getMonth() + 1)).slice(-2), 'QRバトル ' + bd.getFullYear() + '年' + (bd.getMonth() + 1) + '月（集計最終日 ' + (bd.getMonth() + 1) + '/1〜' + (bd.getMonth() + 1) + '/' + last + '）']);
   }
   var o = '<optgroup label="QRバトル（集計最終日の月で選ぶ）">' + bo.map(function (x) { return '<option value="' + x[0] + '">' + x[1] + '</option>'; }).join('') + '</optgroup>';
   var m = [['last30', '直近30日']];
-  for (var i = 0; i < 12; i++) {
+  for (var i = 0; i < 24; i++) { // 2年分
     var d = new Date(t.getFullYear(), t.getMonth() - i, 1);
     m.push([d.getFullYear() + '-' + ('0' + (d.getMonth() + 1)).slice(-2), d.getFullYear() + '年' + (d.getMonth() + 1) + '月']);
   }
   o += '<optgroup label="期間で見る">' + m.map(function (x) { return '<option value="' + x[0] + '">' + x[1] + '</option>'; }).join('') + '</optgroup>';
   $('rPeriod').innerHTML = o;
-  $('rPeriod').value = 'battle:' + t.getFullYear() + '-' + ('0' + (t.getMonth() + 1)).slice(-2);
+  $('rPeriod').value = 'last30'; // 初期表示は直近30日（2026-11-06 オーナー指定・以前は今月の QRバトル）
 }
 $('rPeriod').onchange = loadRank; $('rGenre').onchange = function () { renderRank(); }; $('rDiv').onchange = function () { renderRank(); };
 function loadRank() {
@@ -1938,7 +2112,7 @@ function exportBattleXlsxNow() {
 $('rXlsx').onclick = exportBattleXlsx;
 
 // ---------- 営業ツールPDF（ジャンル別の読み取り上位を、直近3か月のグラフつきで A4 縦1枚に） ----------
-var SP = { data: null, picked: [] };
+var SP = { data: null, picked: [], hideClient: false }; // hideClient: クライアント名を消して出す（他のお客さんに見せる用・2026-11-11〜）
 var SP_MAX = 8;     // 出力は最大8件（2列×4段。6件以下なら2列×3段で大きめに）
 var SP_MONTHS = 3;  // 直近3か月＝今月と前2か月（前々月の1日〜今日）
 var SP_LIMIT = 40;  // 候補はジャンル内の上位40件まで
@@ -1958,13 +2132,15 @@ function openSales() {
       '<div class="sp-tools"><span class="muted" id="spInfo">集計中…</span><span class="sp"></span><button class="btn" id="spTop">上位' + SP_MAX + '件を選び直す</button></div>' +
       '<div class="sp-list" id="spList"></div>' +
     '</div><div class="sp-prev">' +
-      '<div class="sp-prevhead"><span>プレビュー</span><span class="muted" id="spCount"></span><span class="sp"></span><button class="btn primary" id="spOut" disabled>PDFを出力</button></div>' +
+      '<div class="sp-prevhead"><span>プレビュー</span><span class="muted" id="spCount"></span><span class="sp"></span><button class="btn" id="spHide" aria-pressed="false" title="他のお客さんに見せるときに。カードのクライアント名だけを消して出力します（号・版／用途・回数・グラフはそのまま）">クライアント名を消す</button><button class="btn primary" id="spOut" disabled>PDFを出力</button></div>' +
       '<div class="sp-paper"><canvas id="spCanvas" width="' + SP_W + '" height="' + SP_H + '"></canvas></div><div class="err" id="spErr"></div>' +
     '</div></div>';
   $('modal').classList.add('on');
   $('spGenre').onchange = loadSales;
   $('spTop').onclick = function () { if (!SP.data) return; pickTop(); renderSalesList(); drawSalesPreview(); };
   $('spOut').onclick = outputSalesPdf;
+  SP.hideClient = false; spHideBtn();
+  $('spHide').onclick = function () { SP.hideClient = !SP.hideClient; spHideBtn(); drawSalesPreview(); };
   $('spList').addEventListener('change', function (e) {
     var cb = e.target; if (cb.type !== 'checkbox' || !SP.data) return;
     if (cb.checked && SP.picked.length >= SP_MAX) { cb.checked = false; toast('出力できるのは ' + SP_MAX + ' 件までです。ほかのチェックを外してから選んでください'); return; }
@@ -1973,6 +2149,7 @@ function openSales() {
   });
   loadSales();
 }
+function spHideBtn() { var b = $('spHide'); if (!b) return; b.textContent = SP.hideClient ? 'クライアント名を表示する' : 'クライアント名を消す'; b.classList.toggle('on', SP.hideClient); b.setAttribute('aria-pressed', SP.hideClient ? 'true' : 'false'); }
 function pickTop() { SP.picked = SP.data.items.slice(0, SP_MAX).map(function (q) { return q.code; }); }
 function loadSales() {
   var g = $('spGenre').value;
@@ -2061,9 +2238,14 @@ function drawSalesCard(g, q, rank, x, y, w, h, d) {
   // 名称
   var tx = bx + bs + mm(2.5), tw = x + w - pad - tx;
   g.textAlign = 'left'; g.fillStyle = '#0f172a'; g.font = spFont(12.5, 700);
-  g.fillText(fitText(g, t.client, tw), tx, by + mm(3.7));
-  g.fillStyle = '#64748b'; g.font = spFont(7.5, 400);
-  g.fillText(fitText(g, t.sub || q.genre, tw), tx, by + mm(7.4));
+  if (SP.hideClient) { // クライアント名を消す: 名前の行は描かず、号・版／用途を順位の高さの真ん中に
+    g.fillStyle = '#64748b'; g.font = spFont(9, 500);
+    g.fillText(fitText(g, t.sub || q.genre, tw), tx, by + bs * 0.66);
+  } else {
+    g.fillText(fitText(g, t.client, tw), tx, by + mm(3.7));
+    g.fillStyle = '#64748b'; g.font = spFont(7.5, 400);
+    g.fillText(fitText(g, t.sub || q.genre, tw), tx, by + mm(7.4));
+  }
   // 数字（3か月合計・1日平均・最多の週）
   var sum = q.count, avg = d.days ? sum / d.days : 0, peak = weeks.reduce(function (m, wk) { return Math.max(m, wk.count); }, 0);
   var ly = by + bs + mm(5), vy = ly + mm(6.5);
@@ -2315,7 +2497,7 @@ function outputSalesPdf() {
     drawSalesReport(cv, d, picked);
     var pdf = new jspdf.jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4', compress: true });
     pdf.addImage(cv.toDataURL('image/jpeg', 0.92), 'JPEG', 0, 0, 210, 297);
-    pdf.save('QR読み取り実績_' + safeName(d.genre || '全ジャンル') + '_' + ymd(new Date()) + '.pdf');
+    pdf.save('QR読み取り実績_' + safeName(d.genre || '全ジャンル') + (SP.hideClient ? '_名前なし' : '') + '_' + ymd(new Date()) + '.pdf');
     toast('PDF を書き出しました');
   }).catch(function (e) { if ($('spErr')) $('spErr').textContent = e.message; }).then(function () { if ($('spOut')) $('spOut').disabled = !SP.picked.length; });
 }
@@ -2328,17 +2510,22 @@ $('rRows').onclick = function (e) {
 // ---------- ゴミ箱 ----------
 function loadTrash() {
   $('tRows').innerHTML = '<tr><td colspan="5" class="loading">読み込み中…</td></tr>';
-  call('listTrash').then(function (r) {
-    $('tRows').innerHTML = r.length ? r.map(function (q) {
+  call('listTrash').then(function (r) { S.trash = r; S.trashN = PAGE; renderTrash(); }).catch(function (e) { $('tRows').innerHTML = '<tr><td colspan="5" class="err">' + esc(e.message) + '</td></tr>'; });
+}
+// ゴミ箱は新しい順に200件ずつ（溜まっても一度に全部描かない・2026-11-03）
+function renderTrash() {
+  var r = S.trash || [], shown = r.slice(0, S.trashN || PAGE);
+    $('tRows').innerHTML = (r.length ? shown.map(function (q) {
       return '<tr><td><div class="nm">' + esc(q.name) + '</div><div class="url">' + esc(q.url) + '</div></td><td>' + tag(q.genre) + '</td><td class="hide-sm">' + who(q.ownerName) +
         '</td><td class="date">' + esc(q.deleted) + '</td><td class="num"><button class="btn" data-c="' + esc(q.code) + '">元に戻す</button></td></tr>';
-    }).join('') : '<tr><td colspan="5" class="loading">ゴミ箱は空です</td></tr>';
-  }).catch(function (e) { $('tRows').innerHTML = '<tr><td colspan="5" class="err">' + esc(e.message) + '</td></tr>'; });
+    }).join('') : '<tr><td colspan="5" class="loading">ゴミ箱は空です</td></tr>') +
+      (shown.length < r.length ? '<tr><td colspan="5" class="loading"><button class="btn" id="trashMore">さらに' + Math.min(PAGE, r.length - shown.length) + '件を表示（残り ' + (r.length - shown.length) + '件）</button></td></tr>' : '');
 }
 $('tRows').onclick = function (e) {
+  if (e.target.closest('#trashMore')) { S.trashN = (S.trashN || PAGE) + PAGE; renderTrash(); return; }
   var b = e.target.closest('button[data-c]'); if (!b) return;
   b.disabled = true;
-  call('restoreQr', b.dataset.c).then(function () { toast('元に戻しました'); loadTrash(); }).catch(function (e) { toast(e.message); b.disabled = false; });
+  call('restoreQr', b.dataset.c).then(function () { S.listAt = 0; toast('元に戻しました'); loadTrash(); }).catch(function (e) { toast(e.message); b.disabled = false; });
 };
 </script>
 <!-- サンプル版だけに付ける帯（人の切り替え） -->
