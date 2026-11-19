@@ -1732,7 +1732,7 @@ function toggleReplaced(b) {
   var on = !q.replaced; b.disabled = true;
   call('updateQrFields', q.code, { seen: q.updated, replaced: on }).then(function (nq) {
     if (nq && nq.code) q.updated = nq.updated; q.replaced = on;
-    b.outerHTML = repBtn(q); toast(on ? '「' + q.name + '」を差替済にしました' : '「' + q.name + '」を未差替に戻しました');
+    b.outerHTML = repBtn(q); // 一覧で変えたときのお知らせは出さない（2026-11-19 オーナー指示。失敗したときだけ出す）
   }).catch(function (e) { toast(e.message); b.disabled = false; });
 }
 // 一覧のプルダウン（ジャンル・部門）。変えるとすぐ保存
@@ -1757,13 +1757,13 @@ $('rows').addEventListener('change', function (e) {
     var beforeOwn = q.ownerEmail, nm = sel.selectedOptions[0].textContent;
     call('changeOwner', q.code, val, q.updated).then(function (nq) {
       if (nq && nq.code) putQ(nq); else { q.ownerEmail = val; q.ownerName = nm; }
-      toast('担当者を「' + nm + '」に変更しました'); renderFolders(); renderList();
+      renderFolders(); renderList(); // お知らせは出さない（2026-11-19）
     }).catch(function (e) { sel.value = beforeOwn; toast(e.message); sel.disabled = false; });
     return;
   }
   var before = q[field] || '', f = { seen: q.updated }; f[field] = val;
   call('updateQrFields', q.code, f).then(function (nq) {
-    if (nq && nq.code) { q.updated = nq.updated; } q[field] = val; prepQ(q); toast((field === 'genre' ? 'ジャンル' : 'エントリー部門') + 'を「' + (val || 'なし') + '」に変更しました');
+    if (nq && nq.code) { q.updated = nq.updated; } q[field] = val; prepQ(q); // お知らせは出さない（2026-11-19）
     sel.classList.toggle('none', field === 'division' && !val);
   }).catch(function (e) { sel.value = before; toast(e.message); }).then(function () { sel.disabled = false; });
 });
